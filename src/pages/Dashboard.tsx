@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, FileText, Gift, AlertTriangle, DollarSign } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { LogOut, FileText, Gift, AlertTriangle, DollarSign, ChevronDown, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 
@@ -27,11 +28,24 @@ interface SendosoRecord {
   status: string;
 }
 
+interface EmailSummary {
+  email: string;
+  tempoCount: number;
+  tempoTotal: number;
+  sendosoCount: number;
+  sendosoTotal: number;
+  difference: number;
+  hasMismatch: boolean;
+  tempoRecords: TempoSubmission[];
+  sendosoRecords: SendosoRecord[];
+}
+
 export default function Dashboard() {
   const { profile, signOut, isAdmin } = useAuth();
   const [tempoSubmissions, setTempoSubmissions] = useState<TempoSubmission[]>([]);
   const [sendosoRecords, setSendosoRecords] = useState<SendosoRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchData();
@@ -54,25 +68,58 @@ export default function Dashboard() {
     }
   };
 
-  // Calculate stats
+  const emailSummaries = useMemo(() => {
+    const map = new Map<string, EmailSummary>();
+
+    for (const t of tempoSubmissions) {
+      const key = t.technician_email.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, sendosoCount: 0, sendosoTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], sendosoRecords: [] });
+      }
+      const entry = map.get(key)!;
+      entry.tempoCount++;
+      entry.tempoTotal += Number(t.upsell_amount);
+      entry.tempoRecords.push(t);
+    }
+
+    for (const s of sendosoRecords) {
+      const key = s.technician_email.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, sendosoCount: 0, sendosoTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], sendosoRecords: [] });
+      }
+      const entry = map.get(key)!;
+      entry.sendosoCount++;
+      entry.sendosoTotal += Number(s.reward_amount);
+      entry.sendosoRecords.push(s);
+    }
+
+    for (const entry of map.values()) {
+      entry.difference = entry.tempoTotal - entry.sendosoTotal;
+      entry.hasMismatch = entry.tempoCount !== entry.sendosoCount || Math.abs(entry.difference) > 0.01;
+    }
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.hasMismatch !== b.hasMismatch) return a.hasMismatch ? -1 : 1;
+      return a.email.localeCompare(b.email);
+    });
+  }, [tempoSubmissions, sendosoRecords]);
+
   const totalSubmissions = tempoSubmissions.length;
   const totalRewards = sendosoRecords.length;
-  const totalSubmissionAmount = tempoSubmissions.reduce((sum, t) => sum + Number(t.upsell_amount), 0);
   const totalRewardAmount = sendosoRecords.reduce((sum, s) => sum + Number(s.reward_amount), 0);
+  const mismatchCount = emailSummaries.filter((s) => s.hasMismatch).length;
 
-  // Find missing rewards (tempo submissions without matching sendoso record)
-  const missingRewards = tempoSubmissions.filter((tempo) => {
-    const tempoDate = format(new Date(tempo.submission_date), "yyyy-MM-dd");
-    return !sendosoRecords.some(
-      (sendoso) =>
-        sendoso.technician_email.toLowerCase() === tempo.technician_email.toLowerCase() &&
-        format(new Date(sendoso.fulfillment_date), "yyyy-MM-dd") === tempoDate
-    );
-  });
+  const toggleExpand = (email: string) => {
+    setExpandedEmails((prev) => {
+      const next = new Set(prev);
+      if (next.has(email)) next.delete(email);
+      else next.add(email);
+      return next;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <div>
@@ -123,18 +170,18 @@ export default function Dashboard() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Missing Rewards</CardTitle>
+              <CardTitle className="text-sm font-medium">Email Mismatches</CardTitle>
               <AlertTriangle className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">{missingRewards.length}</div>
-              <p className="text-xs text-muted-foreground">Submissions without rewards</p>
+              <div className="text-2xl font-bold text-destructive">{mismatchCount}</div>
+              <p className="text-xs text-muted-foreground">Emails with discrepancies</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Reward Value</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -144,117 +191,130 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Missing Rewards Alert */}
-        {missingRewards.length > 0 && (
-          <Card className="mb-8 border-destructive">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-destructive">
-                <AlertTriangle className="h-5 w-5" />
-                Missing Rewards
-              </CardTitle>
-              <CardDescription>
-                The following submissions don't have a matching reward in Sendoso
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        {/* Technician Summary Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Technician Summary</CardTitle>
+            <CardDescription>
+              Per-email comparison of TeMPO submissions vs Sendoso rewards. Click a row to see details.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <p className="text-muted-foreground">Loading...</p>
+            ) : emailSummaries.length === 0 ? (
+              <p className="text-muted-foreground">No data found</p>
+            ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Amount</TableHead>
+                    <TableHead className="w-8"></TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="text-right">Submissions</TableHead>
+                    <TableHead className="text-right">Submission Total</TableHead>
+                    <TableHead className="text-right">Rewards</TableHead>
+                    <TableHead className="text-right">Reward Total</TableHead>
+                    <TableHead className="text-right">Difference</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {missingRewards.map((submission) => (
-                    <TableRow key={submission.id}>
-                      <TableCell>{format(new Date(submission.submission_date), "MMM d, yyyy")}</TableCell>
-                      <TableCell>${Number(submission.upsell_amount).toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Badge variant="destructive">Missing Reward</Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {emailSummaries.map((summary) => {
+                    const isExpanded = expandedEmails.has(summary.email);
+                    return (
+                      <Collapsible key={summary.email} open={isExpanded} onOpenChange={() => toggleExpand(summary.email)} asChild>
+                        <>
+                          <CollapsibleTrigger asChild>
+                            <TableRow className="cursor-pointer">
+                              <TableCell className="w-8 px-2">
+                                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                              </TableCell>
+                              <TableCell className="font-medium">{summary.email}</TableCell>
+                              <TableCell className="text-right">{summary.tempoCount}</TableCell>
+                              <TableCell className="text-right">${summary.tempoTotal.toFixed(2)}</TableCell>
+                              <TableCell className="text-right">{summary.sendosoCount}</TableCell>
+                              <TableCell className="text-right">${summary.sendosoTotal.toFixed(2)}</TableCell>
+                              <TableCell className={`text-right font-semibold ${summary.hasMismatch ? "text-destructive" : ""}`}>
+                                {summary.difference > 0 ? "+" : ""}${summary.difference.toFixed(2)}
+                              </TableCell>
+                              <TableCell>
+                                {summary.hasMismatch ? (
+                                  <Badge variant="destructive">Mismatch</Badge>
+                                ) : (
+                                  <Badge className="bg-green-600 text-white border-transparent">Matched</Badge>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent asChild>
+                            <tr>
+                              <td colSpan={8} className="p-0">
+                                <div className="grid gap-4 p-4 md:grid-cols-2 bg-muted/30">
+                                  {/* Tempo detail */}
+                                  <div>
+                                    <p className="mb-2 text-sm font-semibold">TeMPO Submissions</p>
+                                    {summary.tempoRecords.length === 0 ? (
+                                      <p className="text-xs text-muted-foreground">None</p>
+                                    ) : (
+                                      <Table>
+                                        <TableHeader>
+                                          <TableRow>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Amount</TableHead>
+                                            <TableHead>Status</TableHead>
+                                          </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {summary.tempoRecords.map((r) => (
+                                            <TableRow key={r.id}>
+                                              <TableCell>{format(new Date(r.submission_date), "MMM d, yyyy")}</TableCell>
+                                              <TableCell>${Number(r.upsell_amount).toFixed(2)}</TableCell>
+                                              <TableCell><Badge className={getStatusStyles(r.status)}>{r.status}</Badge></TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                    )}
+                                  </div>
+                                  {/* Sendoso detail */}
+                                  <div>
+                                    <p className="mb-2 text-sm font-semibold">Sendoso Rewards</p>
+                                    {summary.sendosoRecords.length === 0 ? (
+                                      <p className="text-xs text-muted-foreground">None</p>
+                                    ) : (
+                                      <Table>
+                                        <TableHeader>
+                                          <TableRow>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Amount</TableHead>
+                                            <TableHead>Status</TableHead>
+                                          </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {summary.sendosoRecords.map((r) => (
+                                            <TableRow key={r.id}>
+                                              <TableCell>{format(new Date(r.fulfillment_date), "MMM d, yyyy")}</TableCell>
+                                              <TableCell>${Number(r.reward_amount).toFixed(2)}</TableCell>
+                                              <TableCell><Badge className={getStatusStyles(r.status)}>{r.status}</Badge></TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          </CollapsibleContent>
+                        </>
+                      </Collapsible>
+                    );
+                  })}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* All Records */}
-        <div className="grid gap-8 lg:grid-cols-2">
-          {/* TeMPO Submissions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>TeMPO Submissions</CardTitle>
-              <CardDescription>Your upsell submissions from TeMPO</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <p className="text-muted-foreground">Loading...</p>
-              ) : tempoSubmissions.length === 0 ? (
-                <p className="text-muted-foreground">No submissions found</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {tempoSubmissions.map((submission) => (
-                      <TableRow key={submission.id}>
-                        <TableCell>{format(new Date(submission.submission_date), "MMM d, yyyy")}</TableCell>
-                        <TableCell>${Number(submission.upsell_amount).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Badge className={getStatusStyles(submission.status)}>{submission.status}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Sendoso Records */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Sendoso Rewards</CardTitle>
-              <CardDescription>Gift cards received from Sendoso</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <p className="text-muted-foreground">Loading...</p>
-              ) : sendosoRecords.length === 0 ? (
-                <p className="text-muted-foreground">No rewards found</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sendosoRecords.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell>{format(new Date(record.fulfillment_date), "MMM d, yyyy")}</TableCell>
-                        <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Badge className={getStatusStyles(record.status)}>{record.status}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+            )}
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
