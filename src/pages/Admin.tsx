@@ -133,6 +133,7 @@ export default function Admin() {
           submission_date: dateValue,
           status: statusIdx >= 0 ? values[statusIdx] : "Issued",
           uploaded_by: user.id,
+          gift_card_code: codeIdx >= 0 ? values[codeIdx] || null : null,
         });
       }
 

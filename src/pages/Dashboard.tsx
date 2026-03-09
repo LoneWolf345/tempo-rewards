@@ -31,16 +31,25 @@ interface SendosoRecord {
   status: string;
 }
 
+interface RewardRecord {
+  id: string;
+  email: string;
+  amount: number;
+  date: string;
+  status: string;
+  source: "Sendoso" | "TeMPO";
+}
+
 interface EmailSummary {
   email: string;
   tempoCount: number;
   tempoTotal: number;
-  sendosoCount: number;
-  sendosoTotal: number;
+  rewardCount: number;
+  rewardTotal: number;
   difference: number;
   hasMismatch: boolean;
   tempoRecords: TempoSubmission[];
-  sendosoRecords: SendosoRecord[];
+  rewardRecords: RewardRecord[];
 }
 
 export default function Dashboard() {
