@@ -340,8 +340,8 @@ export default function Admin() {
                     <FileText className="h-5 w-5" />
                     Upload TeMPO CSV
                   </CardTitle>
-                  <CardDescription>
-                    Upload upsell submissions from TeMPO. CSV should have columns: email, name, amount, date, status
+                <CardDescription>
+                    Upload gift card records from TeMPO. Required columns: issued_to_email, amount, issued_at. Optional: status
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
