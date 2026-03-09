@@ -421,6 +421,7 @@ export default function Admin() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Gift className="h-5 w-5" />
+                    2. Upload Sendoso CSV
                     Upload Sendoso CSV
                   </CardTitle>
                   <CardDescription>
