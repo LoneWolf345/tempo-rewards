@@ -209,7 +209,7 @@ export default function Dashboard() {
                         <TableCell>{format(new Date(submission.submission_date), "MMM d, yyyy")}</TableCell>
                         <TableCell>${Number(submission.upsell_amount).toFixed(2)}</TableCell>
                         <TableCell>
-                          <Badge variant="secondary">{submission.status}</Badge>
+                          <Badge className={getStatusStyles(submission.status)}>{submission.status}</Badge>
                         </TableCell>
                       </TableRow>
                     ))}
