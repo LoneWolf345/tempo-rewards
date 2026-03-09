@@ -336,7 +336,9 @@ export default function Dashboard() {
   const totalSubmissions = tempoSubmissions.length;
   const totalRewards = emailSummaries.reduce((sum, s) => sum + s.rewardCount, 0);
   const totalRewardAmount = emailSummaries.reduce((sum, s) => sum + s.rewardTotal, 0);
-  const mismatchCount = emailSummaries.filter((s) => s.hasMismatch).length;
+  const mismatchCount = emailSummaries.filter((s) => s.reconciliationStatus === "mismatch").length;
+  const balancedCount = emailSummaries.filter((s) => s.reconciliationStatus === "balanced").length;
+  const matchedCount = emailSummaries.filter((s) => s.reconciliationStatus === "matched").length;
 
   const toggleExpand = (email: string) => {
     setExpandedEmails((prev) => {
