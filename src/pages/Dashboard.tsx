@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { LogOut, FileText, Gift, AlertTriangle, DollarSign } from "lucide-react";
 import { format } from "date-fns";
+import { getStatusStyles } from "@/lib/statusStyles";
 
 interface TempoSubmission {
   id: string;
