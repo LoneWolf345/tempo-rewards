@@ -529,12 +529,33 @@ export default function Dashboard() {
                                         </TableRow>
                                       ) : (
                                         summary.matchedRows.map((row, idx) => (
-                                          <TableRow key={idx} className={!row.isMatched ? "bg-destructive/5" : ""}>
+                                          <TableRow key={idx} className={!row.isMatched ? "bg-destructive/5" : row.isGroupMatch ? "bg-blue-50 dark:bg-blue-950/20" : ""}>
                                             <TableCell>
-                                              {row.tempoRecord ? format(new Date(row.tempoRecord.submission_date), "MMM d, yyyy") : <span className="text-muted-foreground">—</span>}
+                                              {row.tempoRecords && row.tempoRecords.length > 0 ? (
+                                                row.isGroupMatch ? (
+                                                  <div className="flex flex-col gap-0.5">
+                                                    {row.tempoRecords.map((t, i) => (
+                                                      <span key={i}>{format(new Date(t.submission_date), "MMM d, yyyy")}</span>
+                                                    ))}
+                                                  </div>
+                                                ) : (
+                                                  format(new Date(row.tempoRecords[0].submission_date), "MMM d, yyyy")
+                                                )
+                                              ) : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
                                             <TableCell>
-                                              ${(row.tempoRecord ? Number(row.tempoRecord.upsell_amount) : row.rewardRecord!.amount).toFixed(2)}
+                                              {row.isGroupMatch && row.tempoRecords && row.tempoRecords.length > 1 ? (
+                                                <div>
+                                                  <span className="text-muted-foreground text-xs">
+                                                    ${Number(row.tempoRecords[0].upsell_amount).toFixed(2)} × {row.tempoRecords.length} ={" "}
+                                                  </span>
+                                                  <span className="font-medium">
+                                                    ${row.tempoRecords.reduce((sum, t) => sum + Number(t.upsell_amount), 0).toFixed(2)}
+                                                  </span>
+                                                </div>
+                                              ) : (
+                                                <span>${(row.tempoRecords?.[0] ? Number(row.tempoRecords[0].upsell_amount) : row.rewardRecord!.amount).toFixed(2)}</span>
+                                              )}
                                             </TableCell>
                                             <TableCell>
                                               {row.rewardRecord ? format(new Date(row.rewardRecord.date), "MMM d, yyyy") : <span className="text-muted-foreground">—</span>}
@@ -547,11 +568,15 @@ export default function Dashboard() {
                                               ) : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
                                             <TableCell>
-                                              {row.isMatched ? (
+                                              {row.isMatched && row.isGroupMatch ? (
+                                                <Badge className="bg-blue-600 text-white border-transparent">
+                                                  <Check className="mr-1 h-3 w-3" />Grouped
+                                                </Badge>
+                                              ) : row.isMatched ? (
                                                 <Badge className="bg-green-600 text-white border-transparent">
                                                   <Check className="mr-1 h-3 w-3" />Matched
                                                 </Badge>
-                                              ) : row.tempoRecord && !row.rewardRecord ? (
+                                              ) : row.tempoRecords && row.tempoRecords.length > 0 && !row.rewardRecord ? (
                                                 <Badge variant="outline" className="text-amber-600 border-amber-600">
                                                   <Clock className="mr-1 h-3 w-3" />Pending
                                                 </Badge>
