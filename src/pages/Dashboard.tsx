@@ -245,7 +245,7 @@ export default function Dashboard() {
                         <TableCell>{format(new Date(record.fulfillment_date), "MMM d, yyyy")}</TableCell>
                         <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
                         <TableCell>
-                          <Badge variant="default">{record.status}</Badge>
+                          <Badge className={getStatusStyles(record.status)}>{record.status}</Badge>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -540,17 +540,6 @@ export default function Admin() {
                           </TableCell>
                         </TableRow>
                       ))}
-                          <TableRow key={record.id}>
-                            <TableCell>{record.technician_email}</TableCell>
-                            <TableCell>{record.technician_name}</TableCell>
-                            <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
-                            <TableCell>{format(new Date(record.fulfillment_date), "MMM d, yyyy")}</TableCell>
-                            <TableCell>
-                              <Badge className={getStatusStyles(record.status)}>{record.status}</Badge>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
                     </TableBody>
                   </Table>
                 )}
