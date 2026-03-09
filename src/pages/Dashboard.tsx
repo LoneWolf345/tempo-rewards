@@ -158,7 +158,7 @@ export default function Dashboard() {
     const unmatchedRewards = rewardRecords.filter(r => !usedRewards.has(r.id));
 
     const findSubsetSum = (items: TempoSubmission[], target: number, rewardDate: number): TempoSubmission[] | null => {
-      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+      const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
       const eligible = items.filter(t => {
         const diff = rewardDate - new Date(t.submission_date).getTime();
         return diff >= 0 && diff <= SEVEN_DAYS;
