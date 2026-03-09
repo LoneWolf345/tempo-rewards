@@ -288,7 +288,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalRewards}</div>
-              <p className="text-xs text-muted-foreground">Sendoso gift cards</p>
+              <p className="text-xs text-muted-foreground">Sendoso + TeMPO rewards</p>
             </CardContent>
           </Card>
 
