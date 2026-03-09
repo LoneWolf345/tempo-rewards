@@ -19,6 +19,7 @@ interface TempoSubmission {
   upsell_amount: number;
   submission_date: string;
   status: string;
+  gift_card_code: string | null;
 }
 
 interface SendosoRecord {
