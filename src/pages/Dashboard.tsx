@@ -41,9 +41,10 @@ interface RewardRecord {
 }
 
 interface MatchedRow {
-  tempoRecord?: TempoSubmission;
+  tempoRecords?: TempoSubmission[];
   rewardRecord?: RewardRecord;
   isMatched: boolean;
+  isGroupMatch?: boolean;
 }
 
 interface EmailSummary {
