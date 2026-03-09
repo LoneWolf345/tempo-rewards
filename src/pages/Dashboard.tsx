@@ -55,8 +55,8 @@ export default function Dashboard() {
     setIsLoading(true);
     try {
       const [tempoRes, sendosoRes] = await Promise.all([
-        supabase.from("tempo_submissions").select("*").order("submission_date", { ascending: false }),
-        supabase.from("sendoso_records").select("*").order("fulfillment_date", { ascending: false }),
+        supabase.from("tempo_submissions").select("*").order("submission_date", { ascending: false }).limit(10000),
+        supabase.from("sendoso_records").select("*").order("fulfillment_date", { ascending: false }).limit(10000),
       ]);
 
       if (tempoRes.data) setTempoSubmissions(tempoRes.data as TempoSubmission[]);

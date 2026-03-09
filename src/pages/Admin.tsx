@@ -73,10 +73,10 @@ export default function Admin() {
     setIsLoading(true);
     try {
       const [profilesRes, rolesRes, tempoRes, sendosoRes] = await Promise.all([
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-        supabase.from("user_roles").select("*"),
-        supabase.from("tempo_submissions").select("*").order("submission_date", { ascending: false }),
-        supabase.from("sendoso_records").select("*").order("fulfillment_date", { ascending: false }),
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(10000),
+        supabase.from("user_roles").select("*").limit(10000),
+        supabase.from("tempo_submissions").select("*").order("submission_date", { ascending: false }).limit(10000),
+        supabase.from("sendoso_records").select("*").order("fulfillment_date", { ascending: false }).limit(10000),
       ]);
 
       if (profilesRes.data) setProfiles(profilesRes.data as Profile[]);
