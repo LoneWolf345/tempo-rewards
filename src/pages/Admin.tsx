@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { ArrowLeft, Upload, Users, FileText, Gift, Trash2, Shield } from "lucide-react";
+import { ArrowLeft, Upload, Users, FileText, Gift, Shield } from "lucide-react";
 import { format } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 
