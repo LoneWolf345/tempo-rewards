@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { ArrowLeft, Upload, Users, FileText, Gift, Shield } from "lucide-react";
+import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 
@@ -52,10 +52,26 @@ export default function Admin() {
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
-  const [tempoSubmissions, setTempoSubmissions] = useState<TempoSubmission[]>([]);
-  const [sendosoRecords, setSendosoRecords] = useState<SendosoRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+
+  // TeMPO pagination state
+  const [tempoRecords, setTempoRecords] = useState<TempoSubmission[]>([]);
+  const [tempoTotal, setTempoTotal] = useState(0);
+  const [tempoPage, setTempoPage] = useState(0);
+  const [tempoSearch, setTempoSearch] = useState("");
+  const [tempoSearchInput, setTempoSearchInput] = useState("");
+  const [tempoLoading, setTempoLoading] = useState(false);
+
+  // Sendoso pagination state
+  const [sendosoRecords, setSendosoRecords] = useState<SendosoRecord[]>([]);
+  const [sendosoTotal, setSendosoTotal] = useState(0);
+  const [sendosoPage, setSendosoPage] = useState(0);
+  const [sendosoSearch, setSendosoSearch] = useState("");
+  const [sendosoSearchInput, setSendosoSearchInput] = useState("");
+  const [sendosoLoading, setSendosoLoading] = useState(false);
+
+  const PAGE_SIZE = 100;
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -65,30 +81,84 @@ export default function Admin() {
 
   useEffect(() => {
     if (isAdmin) {
-      fetchAllData();
+      fetchBaseData();
+      fetchTempoPage();
+      fetchSendosoPage();
     }
   }, [isAdmin]);
 
-  const fetchAllData = async () => {
+  useEffect(() => {
+    if (isAdmin) fetchTempoPage();
+  }, [tempoPage, tempoSearch]);
+
+  useEffect(() => {
+    if (isAdmin) fetchSendosoPage();
+  }, [sendosoPage, sendosoSearch]);
+
+  const fetchBaseData = async () => {
     setIsLoading(true);
     try {
-      const [profilesRes, rolesRes, tempoRes, sendosoRes] = await Promise.all([
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(10000),
-        supabase.from("user_roles").select("*").limit(10000),
-        supabase.from("tempo_submissions").select("*").order("submission_date", { ascending: false }).limit(10000),
-        supabase.from("sendoso_records").select("*").order("fulfillment_date", { ascending: false }).limit(10000),
+      const [profilesRes, rolesRes] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("user_roles").select("*"),
       ]);
 
       if (profilesRes.data) setProfiles(profilesRes.data as Profile[]);
       if (rolesRes.data) setUserRoles(rolesRes.data as UserRole[]);
-      if (tempoRes.data) setTempoSubmissions(tempoRes.data as TempoSubmission[]);
-      if (sendosoRes.data) setSendosoRecords(sendosoRes.data as SendosoRecord[]);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load data");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchTempoPage = async () => {
+    setTempoLoading(true);
+    try {
+      let query = supabase.from("tempo_submissions").select("*", { count: "exact" });
+      if (tempoSearch.trim()) {
+        query = query.ilike("technician_email", `%${tempoSearch.trim()}%`);
+      }
+      const { data, count, error } = await query
+        .order("submission_date", { ascending: false })
+        .range(tempoPage * PAGE_SIZE, (tempoPage + 1) * PAGE_SIZE - 1);
+
+      if (error) throw error;
+      setTempoRecords((data || []) as TempoSubmission[]);
+      setTempoTotal(count || 0);
+    } catch (error) {
+      console.error("Error fetching tempo records:", error);
+    } finally {
+      setTempoLoading(false);
+    }
+  };
+
+  const fetchSendosoPage = async () => {
+    setSendosoLoading(true);
+    try {
+      let query = supabase.from("sendoso_records").select("*", { count: "exact" });
+      if (sendosoSearch.trim()) {
+        query = query.ilike("technician_email", `%${sendosoSearch.trim()}%`);
+      }
+      const { data, count, error } = await query
+        .order("fulfillment_date", { ascending: false })
+        .range(sendosoPage * PAGE_SIZE, (sendosoPage + 1) * PAGE_SIZE - 1);
+
+      if (error) throw error;
+      setSendosoRecords((data || []) as SendosoRecord[]);
+      setSendosoTotal(count || 0);
+    } catch (error) {
+      console.error("Error fetching sendoso records:", error);
+    } finally {
+      setSendosoLoading(false);
+    }
+  };
+
+  const fetchAllData = () => {
+    fetchBaseData();
+    fetchTempoPage();
+    fetchSendosoPage();
   };
 
   const getUserRole = (userId: string) => {
@@ -309,11 +379,11 @@ export default function Admin() {
             </TabsTrigger>
             <TabsTrigger value="tempo">
               <FileText className="mr-2 h-4 w-4" />
-              TeMPO Records ({tempoSubmissions.length})
+              TeMPO Records ({tempoTotal})
             </TabsTrigger>
             <TabsTrigger value="sendoso">
               <Gift className="mr-2 h-4 w-4" />
-              Sendoso Records ({sendosoRecords.length})
+              Sendoso Records ({sendosoTotal})
             </TabsTrigger>
           </TabsList>
 
@@ -443,37 +513,62 @@ export default function Admin() {
               <CardHeader>
                 <CardTitle>All TeMPO Submissions</CardTitle>
                 <CardDescription>Complete list of upsell submissions</CardDescription>
+                <div className="relative mt-2 max-w-sm">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by email..."
+                    value={tempoSearchInput}
+                    onChange={(e) => setTempoSearchInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { setTempoSearch(tempoSearchInput); setTempoPage(0); } }}
+                    className="pl-9"
+                  />
+                </div>
               </CardHeader>
               <CardContent>
-                {isLoading ? (
+                {tempoLoading ? (
                   <p className="text-muted-foreground">Loading...</p>
-                ) : tempoSubmissions.length === 0 ? (
-                  <p className="text-muted-foreground">No records uploaded yet</p>
+                ) : tempoRecords.length === 0 ? (
+                  <p className="text-muted-foreground">No records found</p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {tempoSubmissions.map((submission) => (
-                        <TableRow key={submission.id}>
-                          <TableCell>{submission.technician_email}</TableCell>
-                          <TableCell>{submission.technician_name}</TableCell>
-                          <TableCell>${Number(submission.upsell_amount).toFixed(2)}</TableCell>
-                          <TableCell>{format(new Date(submission.submission_date), "MMM d, yyyy")}</TableCell>
-                          <TableCell>
-                            <Badge className={getStatusStyles(submission.status)}>{submission.status}</Badge>
-                          </TableCell>
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Status</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {tempoRecords.map((submission) => (
+                          <TableRow key={submission.id}>
+                            <TableCell>{submission.technician_email}</TableCell>
+                            <TableCell>{submission.technician_name}</TableCell>
+                            <TableCell>${Number(submission.upsell_amount).toFixed(2)}</TableCell>
+                            <TableCell>{format(new Date(submission.submission_date), "MMM d, yyyy")}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusStyles(submission.status)}>{submission.status}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <div className="mt-4 flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Showing {tempoPage * PAGE_SIZE + 1}–{Math.min((tempoPage + 1) * PAGE_SIZE, tempoTotal)} of {tempoTotal}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" disabled={tempoPage === 0} onClick={() => setTempoPage(tempoPage - 1)}>
+                          <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                        </Button>
+                        <Button variant="outline" size="sm" disabled={(tempoPage + 1) * PAGE_SIZE >= tempoTotal} onClick={() => setTempoPage(tempoPage + 1)}>
+                          Next <ChevronRight className="ml-1 h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -485,37 +580,62 @@ export default function Admin() {
               <CardHeader>
                 <CardTitle>All Sendoso Records</CardTitle>
                 <CardDescription>Complete list of gift card fulfillments</CardDescription>
+                <div className="relative mt-2 max-w-sm">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by email..."
+                    value={sendosoSearchInput}
+                    onChange={(e) => setSendosoSearchInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { setSendosoSearch(sendosoSearchInput); setSendosoPage(0); } }}
+                    className="pl-9"
+                  />
+                </div>
               </CardHeader>
               <CardContent>
-                {isLoading ? (
+                {sendosoLoading ? (
                   <p className="text-muted-foreground">Loading...</p>
                 ) : sendosoRecords.length === 0 ? (
-                  <p className="text-muted-foreground">No records uploaded yet</p>
+                  <p className="text-muted-foreground">No records found</p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sendosoRecords.map((record) => (
-                        <TableRow key={record.id}>
-                          <TableCell>{record.technician_email}</TableCell>
-                          <TableCell>{record.technician_name}</TableCell>
-                          <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
-                          <TableCell>{format(new Date(record.fulfillment_date), "MMM d, yyyy")}</TableCell>
-                          <TableCell>
-                            <Badge className={getStatusStyles(record.status)}>{record.status}</Badge>
-                          </TableCell>
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Status</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {sendosoRecords.map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell>{record.technician_email}</TableCell>
+                            <TableCell>{record.technician_name}</TableCell>
+                            <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
+                            <TableCell>{format(new Date(record.fulfillment_date), "MMM d, yyyy")}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusStyles(record.status)}>{record.status}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <div className="mt-4 flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Showing {sendosoPage * PAGE_SIZE + 1}–{Math.min((sendosoPage + 1) * PAGE_SIZE, sendosoTotal)} of {sendosoTotal}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" disabled={sendosoPage === 0} onClick={() => setSendosoPage(sendosoPage - 1)}>
+                          <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                        </Button>
+                        <Button variant="outline" size="sm" disabled={(sendosoPage + 1) * PAGE_SIZE >= sendosoTotal} onClick={() => setSendosoPage(sendosoPage + 1)}>
+                          Next <ChevronRight className="ml-1 h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
