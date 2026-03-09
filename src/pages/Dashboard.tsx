@@ -56,6 +56,7 @@ interface EmailSummary {
   rewardTotal: number;
   difference: number;
   hasMismatch: boolean;
+  reconciliationStatus: "matched" | "balanced" | "mismatch";
   tempoRecords: TempoSubmission[];
   rewardRecords: RewardRecord[];
   matchedRows: MatchedRow[];
