@@ -105,7 +105,6 @@ export default function Admin() {
       const lines = text.split("\n").filter((line) => line.trim());
       const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
 
-      // Map TeMPO columns: issued_to_email, amount, issued_at, status
       const emailIdx = headers.findIndex((h) => h.includes("issued_to_email") || h.includes("email"));
       const amountIdx = headers.findIndex((h) => h === "amount" || h.includes("amount"));
       const dateIdx = headers.findIndex((h) => h.includes("issued_at") || h.includes("date"));
@@ -121,7 +120,6 @@ export default function Admin() {
         const values = lines[i].split(",").map((v) => v.trim().replace(/"/g, ""));
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
 
-        // Parse datetime format "2025-09-03 00:00:00.000" to date "2025-09-03"
         let dateValue = values[dateIdx];
         if (dateValue.includes(" ")) {
           dateValue = dateValue.split(" ")[0];
@@ -137,7 +135,10 @@ export default function Admin() {
         });
       }
 
-      // Batch insert in chunks of 500 to avoid Supabase row limit
+      // Clear all existing records first
+      await supabase.from("tempo_submissions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+      // Batch insert in chunks of 500
       const chunkSize = 500;
       for (let j = 0; j < records.length; j += chunkSize) {
         const chunk = records.slice(j, j + chunkSize);
@@ -145,7 +146,7 @@ export default function Admin() {
         if (error) throw error;
       }
 
-      toast.success(`Uploaded ${records.length} TeMPO records`);
+      toast.success(`Replaced with ${records.length} TeMPO records`);
       fetchAllData();
     } catch (error) {
       console.error("Upload error:", error);
