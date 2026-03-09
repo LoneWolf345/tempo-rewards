@@ -51,16 +51,43 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
+  const fetchAllRows = async <T,>(
+    table: "tempo_submissions" | "sendoso_records",
+    orderColumn: "submission_date" | "fulfillment_date",
+  ): Promise<T[]> => {
+    const pageSize = 1000;
+    let from = 0;
+    const allRows: T[] = [];
+
+    while (true) {
+      const { data, error } = await supabase
+        .from(table)
+        .select("*")
+        .order(orderColumn, { ascending: false })
+        .range(from, from + pageSize - 1);
+
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+
+      allRows.push(...(data as T[]));
+      if (data.length < pageSize) break;
+
+      from += pageSize;
+    }
+
+    return allRows;
+  };
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [tempoRes, sendosoRes] = await Promise.all([
-        supabase.from("tempo_submissions").select("*").order("submission_date", { ascending: false }).limit(10000),
-        supabase.from("sendoso_records").select("*").order("fulfillment_date", { ascending: false }).limit(10000),
+      const [tempoData, sendosoData] = await Promise.all([
+        fetchAllRows<TempoSubmission>("tempo_submissions", "submission_date"),
+        fetchAllRows<SendosoRecord>("sendoso_records", "fulfillment_date"),
       ]);
 
-      if (tempoRes.data) setTempoSubmissions(tempoRes.data as TempoSubmission[]);
-      if (sendosoRes.data) setSendosoRecords(sendosoRes.data as SendosoRecord[]);
+      setTempoSubmissions(tempoData);
+      setSendosoRecords(sendosoData);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
