@@ -683,6 +683,7 @@ export default function Admin() {
                           <TableHead>Name</TableHead>
                           <TableHead>Amount</TableHead>
                           <TableHead>Date</TableHead>
+                          <TableHead>Expiry</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -693,6 +694,7 @@ export default function Admin() {
                             <TableCell>{record.technician_name}</TableCell>
                             <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
                             <TableCell>{format(new Date(record.fulfillment_date), "MMM d, yyyy")}</TableCell>
+                            <TableCell>{record.expiry_date ? format(new Date(record.expiry_date), "MMM d, yyyy") : "—"}</TableCell>
                             <TableCell>
                               <Badge className={getStatusStyles(record.status)}>{record.status}</Badge>
                             </TableCell>

@@ -29,6 +29,7 @@ interface SendosoRecord {
   reward_amount: number;
   fulfillment_date: string;
   status: string;
+  expiry_date: string | null;
 }
 
 interface RewardRecord {
