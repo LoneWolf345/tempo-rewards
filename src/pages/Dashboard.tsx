@@ -268,8 +268,10 @@ export default function Dashboard() {
       entry.tempoRecords.sort((a, b) => new Date(b.submission_date).getTime() - new Date(a.submission_date).getTime());
       entry.rewardRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       entry.difference = entry.tempoTotal - entry.rewardTotal;
-      entry.hasMismatch = entry.tempoCount !== entry.rewardCount || Math.abs(entry.difference) > 0.01;
       entry.matchedRows = matchRecords(entry.tempoRecords, entry.rewardRecords);
+      // Mismatch = any unmatched rows exist OR totals don't align
+      const hasUnmatchedRows = entry.matchedRows.some(row => !row.isMatched);
+      entry.hasMismatch = hasUnmatchedRows || Math.abs(entry.difference) > 0.01;
     }
 
     return Array.from(map.values());
