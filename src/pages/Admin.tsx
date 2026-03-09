@@ -52,10 +52,26 @@ export default function Admin() {
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
-  const [tempoSubmissions, setTempoSubmissions] = useState<TempoSubmission[]>([]);
-  const [sendosoRecords, setSendosoRecords] = useState<SendosoRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+
+  // TeMPO pagination state
+  const [tempoRecords, setTempoRecords] = useState<TempoSubmission[]>([]);
+  const [tempoTotal, setTempoTotal] = useState(0);
+  const [tempoPage, setTempoPage] = useState(0);
+  const [tempoSearch, setTempoSearch] = useState("");
+  const [tempoSearchInput, setTempoSearchInput] = useState("");
+  const [tempoLoading, setTempoLoading] = useState(false);
+
+  // Sendoso pagination state
+  const [sendosoRecords, setSendosoRecords] = useState<SendosoRecord[]>([]);
+  const [sendosoTotal, setSendosoTotal] = useState(0);
+  const [sendosoPage, setSendosoPage] = useState(0);
+  const [sendosoSearch, setSendosoSearch] = useState("");
+  const [sendosoSearchInput, setSendosoSearchInput] = useState("");
+  const [sendosoLoading, setSendosoLoading] = useState(false);
+
+  const PAGE_SIZE = 100;
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
