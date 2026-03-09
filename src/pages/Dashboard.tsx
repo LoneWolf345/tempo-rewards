@@ -300,9 +300,11 @@ export default function Dashboard() {
 
     // Filter by status
     if (statusFilter === "mismatch") {
-      result = result.filter((s) => s.hasMismatch);
+      result = result.filter((s) => s.reconciliationStatus === "mismatch");
     } else if (statusFilter === "matched") {
-      result = result.filter((s) => !s.hasMismatch);
+      result = result.filter((s) => s.reconciliationStatus === "matched");
+    } else if (statusFilter === "balanced") {
+      result = result.filter((s) => s.reconciliationStatus === "balanced");
     }
 
     // Sort
