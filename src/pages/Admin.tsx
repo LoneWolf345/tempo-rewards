@@ -166,13 +166,11 @@ export default function Admin() {
       const text = await file.text();
       const lines = text.split("\n").filter((line) => line.trim());
       
-      // Auto-detect delimiter (tab or comma)
       const firstLine = lines[0];
       const delimiter = firstLine.includes("\t") ? "\t" : ",";
       
       const headers = firstLine.split(delimiter).map((h) => h.trim().toLowerCase());
 
-      // Map Sendoso columns: recipient_email, status, created_at, egift_price
       const emailIdx = headers.findIndex((h) => h.includes("recipient_email") || h.includes("email"));
       const statusIdx = headers.findIndex((h) => h === "status");
       const dateIdx = headers.findIndex((h) => h.includes("created_at") || h.includes("date"));
@@ -188,10 +186,9 @@ export default function Admin() {
         const values = lines[i].split(delimiter).map((v) => v.trim().replace(/"/g, ""));
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
 
-        // Parse datetime format "2026-02-27 20:21:49 UTC" to date "2026-02-27"
         let dateValue = values[dateIdx];
         if (dateValue.includes(" ")) {
-          dateValue = dateValue.split(" ")[0]; // Extract just the date part
+          dateValue = dateValue.split(" ")[0];
         }
 
         records.push({
@@ -204,7 +201,10 @@ export default function Admin() {
         });
       }
 
-      // Batch insert in chunks of 500 to avoid Supabase row limit
+      // Clear all existing records first
+      await supabase.from("sendoso_records").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+      // Batch insert in chunks of 500
       const chunkSize = 500;
       for (let j = 0; j < records.length; j += chunkSize) {
         const chunk = records.slice(j, j + chunkSize);
@@ -212,7 +212,7 @@ export default function Admin() {
         if (error) throw error;
       }
 
-      toast.success(`Uploaded ${records.length} Sendoso records`);
+      toast.success(`Replaced with ${records.length} Sendoso records`);
       fetchAllData();
     } catch (error) {
       console.error("Upload error:", error);
