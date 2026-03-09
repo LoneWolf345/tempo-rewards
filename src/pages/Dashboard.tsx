@@ -463,65 +463,61 @@ export default function Dashboard() {
                           <CollapsibleContent asChild>
                             <tr>
                               <td colSpan={8} className="p-0">
-                                <div className="grid gap-4 p-4 md:grid-cols-2 bg-muted/30">
-                                  {/* Tempo detail */}
-                                  <div>
-                                    <p className="mb-2 text-sm font-semibold">TeMPO Submissions</p>
-                                    {summary.tempoRecords.length === 0 ? (
-                                      <p className="text-xs text-muted-foreground">None</p>
-                                    ) : (
-                                      <Table>
-                                        <TableHeader>
-                                          <TableRow>
-                                            <TableHead>Date</TableHead>
-                                            <TableHead>Amount</TableHead>
-                                            <TableHead>Status</TableHead>
-                                          </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                          {summary.tempoRecords.map((r) => (
-                                            <TableRow key={r.id}>
-                                              <TableCell>{format(new Date(r.submission_date), "MMM d, yyyy")}</TableCell>
-                                              <TableCell>${Number(r.upsell_amount).toFixed(2)}</TableCell>
-                                              <TableCell><Badge className={getStatusStyles(r.status)}>{r.status}</Badge></TableCell>
-                                            </TableRow>
-                                          ))}
-                                        </TableBody>
-                                      </Table>
-                                    )}
-                                  </div>
-                                  {/* Rewards detail */}
-                                  <div>
-                                    <p className="mb-2 text-sm font-semibold">Rewards</p>
-                                    {summary.rewardRecords.length === 0 ? (
-                                      <p className="text-xs text-muted-foreground">None</p>
-                                    ) : (
-                                      <Table>
-                                        <TableHeader>
-                                          <TableRow>
-                                            <TableHead>Date</TableHead>
-                                            <TableHead>Amount</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Source</TableHead>
-                                          </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                          {summary.rewardRecords.map((r) => (
-                                            <TableRow key={r.id}>
-                                              <TableCell>{format(new Date(r.date), "MMM d, yyyy")}</TableCell>
-                                              <TableCell>${r.amount.toFixed(2)}</TableCell>
-                                              <TableCell><Badge className={getStatusStyles(r.status)}>{r.status}</Badge></TableCell>
-                                              <TableCell>
-                                                <Badge variant={r.source === "TeMPO" ? "outline" : "secondary"}>
-                                                  {r.source}
+                                <div className="p-4 bg-muted/30">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead>Submission Date</TableHead>
+                                        <TableHead>Amount</TableHead>
+                                        <TableHead>Reward Date</TableHead>
+                                        <TableHead>Source</TableHead>
+                                        <TableHead>Status</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {summary.matchedRows.length === 0 ? (
+                                        <TableRow>
+                                          <TableCell colSpan={5} className="text-center text-muted-foreground">No records</TableCell>
+                                        </TableRow>
+                                      ) : (
+                                        summary.matchedRows.map((row, idx) => (
+                                          <TableRow key={idx} className={!row.isMatched ? "bg-destructive/5" : ""}>
+                                            <TableCell>
+                                              {row.tempoRecord ? format(new Date(row.tempoRecord.submission_date), "MMM d, yyyy") : <span className="text-muted-foreground">—</span>}
+                                            </TableCell>
+                                            <TableCell>
+                                              ${(row.tempoRecord ? Number(row.tempoRecord.upsell_amount) : row.rewardRecord!.amount).toFixed(2)}
+                                            </TableCell>
+                                            <TableCell>
+                                              {row.rewardRecord ? format(new Date(row.rewardRecord.date), "MMM d, yyyy") : <span className="text-muted-foreground">—</span>}
+                                            </TableCell>
+                                            <TableCell>
+                                              {row.rewardRecord ? (
+                                                <Badge variant={row.rewardRecord.source === "TeMPO" ? "outline" : "secondary"}>
+                                                  {row.rewardRecord.source}
                                                 </Badge>
-                                              </TableCell>
-                                            </TableRow>
-                                          ))}
-                                        </TableBody>
-                                      </Table>
-                                    )}
-                                  </div>
+                                              ) : <span className="text-muted-foreground">—</span>}
+                                            </TableCell>
+                                            <TableCell>
+                                              {row.isMatched ? (
+                                                <Badge className="bg-green-600 text-white border-transparent">
+                                                  <Check className="mr-1 h-3 w-3" />Matched
+                                                </Badge>
+                                              ) : row.tempoRecord && !row.rewardRecord ? (
+                                                <Badge variant="outline" className="text-amber-600 border-amber-600">
+                                                  <Clock className="mr-1 h-3 w-3" />Pending
+                                                </Badge>
+                                              ) : (
+                                                <Badge variant="outline" className="text-destructive border-destructive">
+                                                  <HelpCircle className="mr-1 h-3 w-3" />Unmatched
+                                                </Badge>
+                                              )}
+                                            </TableCell>
+                                          </TableRow>
+                                        ))
+                                      )}
+                                    </TableBody>
+                                  </Table>
                                 </div>
                               </td>
                             </tr>
