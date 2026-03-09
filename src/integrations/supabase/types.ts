@@ -46,6 +46,7 @@ export type Database = {
       }
       sendoso_records: {
         Row: {
+          expiry_date: string | null
           fulfillment_date: string
           id: string
           reward_amount: number
@@ -56,6 +57,7 @@ export type Database = {
           uploaded_by: string
         }
         Insert: {
+          expiry_date?: string | null
           fulfillment_date: string
           id?: string
           reward_amount: number
@@ -66,6 +68,7 @@ export type Database = {
           uploaded_by: string
         }
         Update: {
+          expiry_date?: string | null
           fulfillment_date?: string
           id?: string
           reward_amount?: number
