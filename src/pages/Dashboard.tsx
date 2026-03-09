@@ -214,8 +214,8 @@ export default function Dashboard() {
   }, [emailSummaries, searchQuery, statusFilter, sortColumn, sortDirection]);
 
   const totalSubmissions = tempoSubmissions.length;
-  const totalRewards = sendosoRecords.length;
-  const totalRewardAmount = sendosoRecords.reduce((sum, s) => sum + Number(s.reward_amount), 0);
+  const totalRewards = emailSummaries.reduce((sum, s) => sum + s.rewardCount, 0);
+  const totalRewardAmount = emailSummaries.reduce((sum, s) => sum + s.rewardTotal, 0);
   const mismatchCount = emailSummaries.filter((s) => s.hasMismatch).length;
 
   const toggleExpand = (email: string) => {
