@@ -51,7 +51,7 @@ export type Database = {
           reward_amount: number
           status: string
           technician_email: string
-          technician_name: string
+          technician_name: string | null
           uploaded_at: string
           uploaded_by: string
         }
@@ -61,7 +61,7 @@ export type Database = {
           reward_amount: number
           status?: string
           technician_email: string
-          technician_name: string
+          technician_name?: string | null
           uploaded_at?: string
           uploaded_by: string
         }
@@ -71,7 +71,7 @@ export type Database = {
           reward_amount?: number
           status?: string
           technician_email?: string
-          technician_name?: string
+          technician_name?: string | null
           uploaded_at?: string
           uploaded_by?: string
         }

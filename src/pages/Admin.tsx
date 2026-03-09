@@ -153,29 +153,40 @@ export default function Admin() {
     try {
       const text = await file.text();
       const lines = text.split("\n").filter((line) => line.trim());
-      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+      
+      // Auto-detect delimiter (tab or comma)
+      const firstLine = lines[0];
+      const delimiter = firstLine.includes("\t") ? "\t" : ",";
+      
+      const headers = firstLine.split(delimiter).map((h) => h.trim().toLowerCase());
 
-      const emailIdx = headers.findIndex((h) => h.includes("email"));
-      const nameIdx = headers.findIndex((h) => h.includes("name"));
-      const amountIdx = headers.findIndex((h) => h.includes("amount"));
-      const dateIdx = headers.findIndex((h) => h.includes("date"));
-      const statusIdx = headers.findIndex((h) => h.includes("status"));
+      // Map Sendoso columns: recipient_email, status, created_at, egift_price
+      const emailIdx = headers.findIndex((h) => h.includes("recipient_email") || h.includes("email"));
+      const statusIdx = headers.findIndex((h) => h === "status");
+      const dateIdx = headers.findIndex((h) => h.includes("created_at") || h.includes("date"));
+      const amountIdx = headers.findIndex((h) => h.includes("egift_price") || h.includes("amount"));
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
-        toast.error("CSV must contain email, amount, and date columns");
+        toast.error("CSV must contain recipient_email, egift_price, and created_at columns");
         return;
       }
 
       const records = [];
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(",").map((v) => v.trim().replace(/"/g, ""));
+        const values = lines[i].split(delimiter).map((v) => v.trim().replace(/"/g, ""));
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
+
+        // Parse datetime format "2026-02-27 20:21:49 UTC" to date "2026-02-27"
+        let dateValue = values[dateIdx];
+        if (dateValue.includes(" ")) {
+          dateValue = dateValue.split(" ")[0]; // Extract just the date part
+        }
 
         records.push({
           technician_email: values[emailIdx],
-          technician_name: nameIdx >= 0 ? values[nameIdx] : "",
+          technician_name: null,
           reward_amount: parseFloat(values[amountIdx]) || 0,
-          fulfillment_date: values[dateIdx],
+          fulfillment_date: dateValue,
           status: statusIdx >= 0 ? values[statusIdx] : "fulfilled",
           uploaded_by: user.id,
         });
@@ -356,7 +367,7 @@ export default function Admin() {
                     Upload Sendoso CSV
                   </CardTitle>
                   <CardDescription>
-                    Upload gift card fulfillment records from Sendoso. CSV should have columns: email, name, amount, date, status
+                    Upload gift card fulfillment records from Sendoso. Required columns: recipient_email, egift_price, created_at. Optional: status
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

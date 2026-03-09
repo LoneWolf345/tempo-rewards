@@ -1,0 +1,1 @@
+ALTER TABLE public.sendoso_records ALTER COLUMN technician_name DROP NOT NULL;
