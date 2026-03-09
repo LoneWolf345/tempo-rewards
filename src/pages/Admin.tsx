@@ -549,7 +549,6 @@ export default function Admin() {
                           </TableRow>
                         );
                       })}
-                      ))}
                     </TableBody>
                   </Table>
                 )}
