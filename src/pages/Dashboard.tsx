@@ -200,8 +200,12 @@ export default function Dashboard() {
       }
     }
 
+    // Collect TeMPO emails to filter Sendoso records
+    const tempoEmails = new Set(tempoSubmissions.map(t => t.technician_email.toLowerCase()));
+
     for (const s of sendosoRecords) {
       const key = s.technician_email.toLowerCase();
+      if (!tempoEmails.has(key)) continue; // Skip non-TeMPO emails
       const entry = getOrCreate(key);
       entry.rewardCount++;
       entry.rewardTotal += Number(s.reward_amount);
