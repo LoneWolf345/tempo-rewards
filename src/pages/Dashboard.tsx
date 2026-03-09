@@ -435,10 +435,10 @@ export default function Dashboard() {
                                       </Table>
                                     )}
                                   </div>
-                                  {/* Sendoso detail */}
+                                  {/* Rewards detail */}
                                   <div>
-                                    <p className="mb-2 text-sm font-semibold">Sendoso Rewards</p>
-                                    {summary.sendosoRecords.length === 0 ? (
+                                    <p className="mb-2 text-sm font-semibold">Rewards</p>
+                                    {summary.rewardRecords.length === 0 ? (
                                       <p className="text-xs text-muted-foreground">None</p>
                                     ) : (
                                       <Table>
@@ -447,14 +447,20 @@ export default function Dashboard() {
                                             <TableHead>Date</TableHead>
                                             <TableHead>Amount</TableHead>
                                             <TableHead>Status</TableHead>
+                                            <TableHead>Source</TableHead>
                                           </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                          {summary.sendosoRecords.map((r) => (
+                                          {summary.rewardRecords.map((r) => (
                                             <TableRow key={r.id}>
-                                              <TableCell>{format(new Date(r.fulfillment_date), "MMM d, yyyy")}</TableCell>
-                                              <TableCell>${Number(r.reward_amount).toFixed(2)}</TableCell>
+                                              <TableCell>{format(new Date(r.date), "MMM d, yyyy")}</TableCell>
+                                              <TableCell>${r.amount.toFixed(2)}</TableCell>
                                               <TableCell><Badge className={getStatusStyles(r.status)}>{r.status}</Badge></TableCell>
+                                              <TableCell>
+                                                <Badge variant={r.source === "TeMPO" ? "outline" : "secondary"}>
+                                                  {r.source}
+                                                </Badge>
+                                              </TableCell>
                                             </TableRow>
                                           ))}
                                         </TableBody>
