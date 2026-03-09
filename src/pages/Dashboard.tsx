@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { LogOut, FileText, Gift, AlertTriangle, DollarSign, ChevronDown, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Search } from "lucide-react";
+import { LogOut, FileText, Gift, AlertTriangle, DollarSign, ChevronDown, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Search, Check, Clock, HelpCircle } from "lucide-react";
 import { format } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 
@@ -40,6 +40,12 @@ interface RewardRecord {
   source: "Sendoso" | "TeMPO";
 }
 
+interface MatchedRow {
+  tempoRecord?: TempoSubmission;
+  rewardRecord?: RewardRecord;
+  isMatched: boolean;
+}
+
 interface EmailSummary {
   email: string;
   tempoCount: number;
@@ -50,6 +56,7 @@ interface EmailSummary {
   hasMismatch: boolean;
   tempoRecords: TempoSubmission[];
   rewardRecords: RewardRecord[];
+  matchedRows: MatchedRow[];
 }
 
 export default function Dashboard() {
@@ -114,12 +121,59 @@ export default function Dashboard() {
   const isUUID = (code: string) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
 
+  const matchRecords = (tempoRecords: TempoSubmission[], rewardRecords: RewardRecord[]): MatchedRow[] => {
+    const sortedTempo = [...tempoRecords].sort((a, b) => new Date(a.submission_date).getTime() - new Date(b.submission_date).getTime());
+    const usedRewards = new Set<string>();
+    const rows: MatchedRow[] = [];
+
+    for (const t of sortedTempo) {
+      let bestReward: RewardRecord | null = null;
+      let bestDiff = Infinity;
+      const tDate = new Date(t.submission_date).getTime();
+
+      for (const r of rewardRecords) {
+        if (usedRewards.has(r.id)) continue;
+        if (Math.abs(Number(t.upsell_amount) - r.amount) > 0.01) continue;
+        const rDate = new Date(r.date).getTime();
+        const diff = rDate - tDate;
+        // Reward should be on or after submission, within 7 days
+        if (diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
+          bestDiff = diff;
+          bestReward = r;
+        }
+      }
+
+      if (bestReward) {
+        usedRewards.add(bestReward.id);
+        rows.push({ tempoRecord: t, rewardRecord: bestReward, isMatched: true });
+      } else {
+        rows.push({ tempoRecord: t, isMatched: false });
+      }
+    }
+
+    // Add unmatched rewards
+    for (const r of rewardRecords) {
+      if (!usedRewards.has(r.id)) {
+        rows.push({ rewardRecord: r, isMatched: false });
+      }
+    }
+
+    // Sort: most recent first by the earliest date in each row
+    rows.sort((a, b) => {
+      const dateA = a.tempoRecord ? new Date(a.tempoRecord.submission_date).getTime() : new Date(a.rewardRecord!.date).getTime();
+      const dateB = b.tempoRecord ? new Date(b.tempoRecord.submission_date).getTime() : new Date(b.rewardRecord!.date).getTime();
+      return dateB - dateA;
+    });
+
+    return rows;
+  };
+
   const emailSummaries = useMemo(() => {
     const map = new Map<string, EmailSummary>();
 
     const getOrCreate = (key: string): EmailSummary => {
       if (!map.has(key)) {
-        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, rewardCount: 0, rewardTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], rewardRecords: [] });
+        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, rewardCount: 0, rewardTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], rewardRecords: [], matchedRows: [] });
       }
       return map.get(key)!;
     };
@@ -127,12 +181,10 @@ export default function Dashboard() {
     for (const t of tempoSubmissions) {
       const key = t.technician_email.toLowerCase();
       const entry = getOrCreate(key);
-      // All TeMPO records count as submissions
       entry.tempoCount++;
       entry.tempoTotal += Number(t.upsell_amount);
       entry.tempoRecords.push(t);
 
-      // Short gift card codes (non-UUID) also count as rewards (TeMPO-issued)
       const code = t.gift_card_code?.trim();
       if (code && !isUUID(code)) {
         entry.rewardCount++;
@@ -168,6 +220,7 @@ export default function Dashboard() {
       entry.rewardRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       entry.difference = entry.tempoTotal - entry.rewardTotal;
       entry.hasMismatch = entry.tempoCount !== entry.rewardCount || Math.abs(entry.difference) > 0.01;
+      entry.matchedRows = matchRecords(entry.tempoRecords, entry.rewardRecords);
     }
 
     return Array.from(map.values());
@@ -410,65 +463,61 @@ export default function Dashboard() {
                           <CollapsibleContent asChild>
                             <tr>
                               <td colSpan={8} className="p-0">
-                                <div className="grid gap-4 p-4 md:grid-cols-2 bg-muted/30">
-                                  {/* Tempo detail */}
-                                  <div>
-                                    <p className="mb-2 text-sm font-semibold">TeMPO Submissions</p>
-                                    {summary.tempoRecords.length === 0 ? (
-                                      <p className="text-xs text-muted-foreground">None</p>
-                                    ) : (
-                                      <Table>
-                                        <TableHeader>
-                                          <TableRow>
-                                            <TableHead>Date</TableHead>
-                                            <TableHead>Amount</TableHead>
-                                            <TableHead>Status</TableHead>
-                                          </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                          {summary.tempoRecords.map((r) => (
-                                            <TableRow key={r.id}>
-                                              <TableCell>{format(new Date(r.submission_date), "MMM d, yyyy")}</TableCell>
-                                              <TableCell>${Number(r.upsell_amount).toFixed(2)}</TableCell>
-                                              <TableCell><Badge className={getStatusStyles(r.status)}>{r.status}</Badge></TableCell>
-                                            </TableRow>
-                                          ))}
-                                        </TableBody>
-                                      </Table>
-                                    )}
-                                  </div>
-                                  {/* Rewards detail */}
-                                  <div>
-                                    <p className="mb-2 text-sm font-semibold">Rewards</p>
-                                    {summary.rewardRecords.length === 0 ? (
-                                      <p className="text-xs text-muted-foreground">None</p>
-                                    ) : (
-                                      <Table>
-                                        <TableHeader>
-                                          <TableRow>
-                                            <TableHead>Date</TableHead>
-                                            <TableHead>Amount</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Source</TableHead>
-                                          </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                          {summary.rewardRecords.map((r) => (
-                                            <TableRow key={r.id}>
-                                              <TableCell>{format(new Date(r.date), "MMM d, yyyy")}</TableCell>
-                                              <TableCell>${r.amount.toFixed(2)}</TableCell>
-                                              <TableCell><Badge className={getStatusStyles(r.status)}>{r.status}</Badge></TableCell>
-                                              <TableCell>
-                                                <Badge variant={r.source === "TeMPO" ? "outline" : "secondary"}>
-                                                  {r.source}
+                                <div className="p-4 bg-muted/30">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead>Submission Date</TableHead>
+                                        <TableHead>Amount</TableHead>
+                                        <TableHead>Reward Date</TableHead>
+                                        <TableHead>Source</TableHead>
+                                        <TableHead>Status</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {summary.matchedRows.length === 0 ? (
+                                        <TableRow>
+                                          <TableCell colSpan={5} className="text-center text-muted-foreground">No records</TableCell>
+                                        </TableRow>
+                                      ) : (
+                                        summary.matchedRows.map((row, idx) => (
+                                          <TableRow key={idx} className={!row.isMatched ? "bg-destructive/5" : ""}>
+                                            <TableCell>
+                                              {row.tempoRecord ? format(new Date(row.tempoRecord.submission_date), "MMM d, yyyy") : <span className="text-muted-foreground">—</span>}
+                                            </TableCell>
+                                            <TableCell>
+                                              ${(row.tempoRecord ? Number(row.tempoRecord.upsell_amount) : row.rewardRecord!.amount).toFixed(2)}
+                                            </TableCell>
+                                            <TableCell>
+                                              {row.rewardRecord ? format(new Date(row.rewardRecord.date), "MMM d, yyyy") : <span className="text-muted-foreground">—</span>}
+                                            </TableCell>
+                                            <TableCell>
+                                              {row.rewardRecord ? (
+                                                <Badge variant={row.rewardRecord.source === "TeMPO" ? "outline" : "secondary"}>
+                                                  {row.rewardRecord.source}
                                                 </Badge>
-                                              </TableCell>
-                                            </TableRow>
-                                          ))}
-                                        </TableBody>
-                                      </Table>
-                                    )}
-                                  </div>
+                                              ) : <span className="text-muted-foreground">—</span>}
+                                            </TableCell>
+                                            <TableCell>
+                                              {row.isMatched ? (
+                                                <Badge className="bg-green-600 text-white border-transparent">
+                                                  <Check className="mr-1 h-3 w-3" />Matched
+                                                </Badge>
+                                              ) : row.tempoRecord && !row.rewardRecord ? (
+                                                <Badge variant="outline" className="text-amber-600 border-amber-600">
+                                                  <Clock className="mr-1 h-3 w-3" />Pending
+                                                </Badge>
+                                              ) : (
+                                                <Badge variant="outline" className="text-destructive border-destructive">
+                                                  <HelpCircle className="mr-1 h-3 w-3" />Unmatched
+                                                </Badge>
+                                              )}
+                                            </TableCell>
+                                          </TableRow>
+                                        ))
+                                      )}
+                                    </TableBody>
+                                  </Table>
                                 </div>
                               </td>
                             </tr>
