@@ -109,6 +109,7 @@ export default function Admin() {
       const amountIdx = headers.findIndex((h) => h === "amount" || h.includes("amount"));
       const dateIdx = headers.findIndex((h) => h.includes("issued_at") || h.includes("date"));
       const statusIdx = headers.findIndex((h) => h === "status");
+      const codeIdx = headers.findIndex((h) => h.includes("gift_card_code") || h.includes("code"));
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
         toast.error("CSV must contain issued_to_email, amount, and issued_at columns");
