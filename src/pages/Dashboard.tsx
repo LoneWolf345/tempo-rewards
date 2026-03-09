@@ -121,12 +121,59 @@ export default function Dashboard() {
   const isUUID = (code: string) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
 
+  const matchRecords = (tempoRecords: TempoSubmission[], rewardRecords: RewardRecord[]): MatchedRow[] => {
+    const sortedTempo = [...tempoRecords].sort((a, b) => new Date(a.submission_date).getTime() - new Date(b.submission_date).getTime());
+    const usedRewards = new Set<string>();
+    const rows: MatchedRow[] = [];
+
+    for (const t of sortedTempo) {
+      let bestReward: RewardRecord | null = null;
+      let bestDiff = Infinity;
+      const tDate = new Date(t.submission_date).getTime();
+
+      for (const r of rewardRecords) {
+        if (usedRewards.has(r.id)) continue;
+        if (Math.abs(Number(t.upsell_amount) - r.amount) > 0.01) continue;
+        const rDate = new Date(r.date).getTime();
+        const diff = rDate - tDate;
+        // Reward should be on or after submission, within 7 days
+        if (diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
+          bestDiff = diff;
+          bestReward = r;
+        }
+      }
+
+      if (bestReward) {
+        usedRewards.add(bestReward.id);
+        rows.push({ tempoRecord: t, rewardRecord: bestReward, isMatched: true });
+      } else {
+        rows.push({ tempoRecord: t, isMatched: false });
+      }
+    }
+
+    // Add unmatched rewards
+    for (const r of rewardRecords) {
+      if (!usedRewards.has(r.id)) {
+        rows.push({ rewardRecord: r, isMatched: false });
+      }
+    }
+
+    // Sort: most recent first by the earliest date in each row
+    rows.sort((a, b) => {
+      const dateA = a.tempoRecord ? new Date(a.tempoRecord.submission_date).getTime() : new Date(a.rewardRecord!.date).getTime();
+      const dateB = b.tempoRecord ? new Date(b.tempoRecord.submission_date).getTime() : new Date(b.rewardRecord!.date).getTime();
+      return dateB - dateA;
+    });
+
+    return rows;
+  };
+
   const emailSummaries = useMemo(() => {
     const map = new Map<string, EmailSummary>();
 
     const getOrCreate = (key: string): EmailSummary => {
       if (!map.has(key)) {
-        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, rewardCount: 0, rewardTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], rewardRecords: [] });
+        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, rewardCount: 0, rewardTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], rewardRecords: [], matchedRows: [] });
       }
       return map.get(key)!;
     };
@@ -134,12 +181,10 @@ export default function Dashboard() {
     for (const t of tempoSubmissions) {
       const key = t.technician_email.toLowerCase();
       const entry = getOrCreate(key);
-      // All TeMPO records count as submissions
       entry.tempoCount++;
       entry.tempoTotal += Number(t.upsell_amount);
       entry.tempoRecords.push(t);
 
-      // Short gift card codes (non-UUID) also count as rewards (TeMPO-issued)
       const code = t.gift_card_code?.trim();
       if (code && !isUUID(code)) {
         entry.rewardCount++;
@@ -175,6 +220,7 @@ export default function Dashboard() {
       entry.rewardRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       entry.difference = entry.tempoTotal - entry.rewardTotal;
       entry.hasMismatch = entry.tempoCount !== entry.rewardCount || Math.abs(entry.difference) > 0.01;
+      entry.matchedRows = matchRecords(entry.tempoRecords, entry.rewardRecords);
     }
 
     return Array.from(map.values());
