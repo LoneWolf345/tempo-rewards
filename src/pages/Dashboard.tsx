@@ -270,9 +270,20 @@ export default function Dashboard() {
       entry.rewardRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       entry.difference = entry.tempoTotal - entry.rewardTotal;
       entry.matchedRows = matchRecords(entry.tempoRecords, entry.rewardRecords);
-      // Mismatch = any unmatched rows exist OR totals don't align
       const hasUnmatchedRows = entry.matchedRows.some(row => !row.isMatched);
-      entry.hasMismatch = hasUnmatchedRows || Math.abs(entry.difference) > 0.01;
+      const isBalanced = Math.abs(entry.difference) <= 0.01;
+
+      if (!hasUnmatchedRows && isBalanced) {
+        entry.reconciliationStatus = "matched";
+        entry.hasMismatch = false;
+      } else if (hasUnmatchedRows && isBalanced) {
+        // Totals balance out (catch-up payments accounted for)
+        entry.reconciliationStatus = "balanced";
+        entry.hasMismatch = false;
+      } else {
+        entry.reconciliationStatus = "mismatch";
+        entry.hasMismatch = true;
+      }
     }
 
     return Array.from(map.values());
