@@ -363,11 +363,11 @@ export default function Dashboard() {
                     <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("tempoTotal")}>
                       <span className="flex items-center justify-end">Submission Total<SortIcon column="tempoTotal" /></span>
                     </TableHead>
-                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("sendosoCount")}>
-                      <span className="flex items-center justify-end">Rewards<SortIcon column="sendosoCount" /></span>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("rewardCount")}>
+                      <span className="flex items-center justify-end">Rewards<SortIcon column="rewardCount" /></span>
                     </TableHead>
-                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("sendosoTotal")}>
-                      <span className="flex items-center justify-end">Reward Total<SortIcon column="sendosoTotal" /></span>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("rewardTotal")}>
+                      <span className="flex items-center justify-end">Reward Total<SortIcon column="rewardTotal" /></span>
                     </TableHead>
                     <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("difference")}>
                       <span className="flex items-center justify-end">Difference<SortIcon column="difference" /></span>
