@@ -389,17 +389,17 @@ export default function Admin() {
 
           {/* Upload Tab */}
           <TabsContent value="upload">
+            <p className="text-sm text-muted-foreground mb-4">
+              <strong>Upload order:</strong> Upload TeMPO submissions first, then Sendoso rewards. Only Sendoso records matching a TeMPO technician email will appear on the dashboard.
+            </p>
             <div className="grid gap-6 md:grid-cols-2">
-              <p className="text-sm text-muted-foreground mb-4">
-                <strong>Upload order:</strong> Upload TeMPO submissions first, then Sendoso rewards. Only Sendoso records matching a TeMPO technician email will appear on the dashboard.
-              </p>
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
                     1. Upload TeMPO CSV
                   </CardTitle>
-                <CardDescription>
+                  <CardDescription>
                     Upload gift card records from TeMPO. Required columns: issued_to_email, amount, issued_at. Optional: status
                   </CardDescription>
                 </CardHeader>
@@ -422,7 +422,6 @@ export default function Admin() {
                   <CardTitle className="flex items-center gap-2">
                     <Gift className="h-5 w-5" />
                     2. Upload Sendoso CSV
-                    Upload Sendoso CSV
                   </CardTitle>
                   <CardDescription>
                     Upload gift card fulfillment records from Sendoso. Required columns: recipient_email, egift_price, created_at. Optional: status
