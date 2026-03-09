@@ -391,8 +391,8 @@ export default function Dashboard() {
                               <TableCell className="font-medium">{summary.email}</TableCell>
                               <TableCell className="text-right">{summary.tempoCount}</TableCell>
                               <TableCell className="text-right">${summary.tempoTotal.toFixed(2)}</TableCell>
-                              <TableCell className="text-right">{summary.sendosoCount}</TableCell>
-                              <TableCell className="text-right">${summary.sendosoTotal.toFixed(2)}</TableCell>
+                              <TableCell className="text-right">{summary.rewardCount}</TableCell>
+                              <TableCell className="text-right">${summary.rewardTotal.toFixed(2)}</TableCell>
                               <TableCell className={`text-right font-semibold ${summary.hasMismatch ? "text-destructive" : ""}`}>
                                 {summary.difference > 0 ? "+" : ""}${summary.difference.toFixed(2)}
                               </TableCell>
