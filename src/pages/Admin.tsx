@@ -250,13 +250,15 @@ export default function Admin() {
       const statusIdx = headers.findIndex((h) => h === "status");
       const dateIdx = headers.findIndex((h) => h.includes("created_at") || h.includes("date"));
       const amountIdx = headers.findIndex((h) => h.includes("egift_price") || h.includes("amount"));
+      const expiryIdx = headers.findIndex((h) => h.includes("expiry_date") || h.includes("expiry") || h.includes("expires"));
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
         toast.error("CSV must contain recipient_email, egift_price, and created_at columns");
         return;
       }
 
-      const records = [];
+      // Parse CSV rows
+      const csvRows = [];
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(delimiter).map((v) => v.trim().replace(/"/g, ""));
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
@@ -266,28 +268,98 @@ export default function Admin() {
           dateValue = dateValue.split(" ")[0];
         }
 
-        records.push({
+        let expiryValue: string | null = null;
+        if (expiryIdx >= 0 && values[expiryIdx]) {
+          expiryValue = values[expiryIdx];
+          if (expiryValue.includes(" ")) {
+            expiryValue = expiryValue.split(" ")[0];
+          }
+        }
+
+        csvRows.push({
           technician_email: values[emailIdx],
-          technician_name: null,
           reward_amount: parseFloat(values[amountIdx]) || 0,
           fulfillment_date: dateValue,
           status: statusIdx >= 0 ? values[statusIdx] : "fulfilled",
-          uploaded_by: user.id,
+          expiry_date: expiryValue,
         });
       }
 
-      // Clear all existing records first
-      await supabase.from("sendoso_records").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      // Fetch all existing records for matching
+      const allExisting: SendosoRecord[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from("sendoso_records")
+          .select("*")
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allExisting.push(...(data as SendosoRecord[]));
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
 
-      // Batch insert in chunks of 500
+      // Build lookup map: key = email_lower|date|amount
+      const existingMap = new Map<string, SendosoRecord>();
+      for (const rec of allExisting) {
+        const key = `${rec.technician_email.toLowerCase()}|${rec.fulfillment_date}|${Number(rec.reward_amount)}`;
+        existingMap.set(key, rec);
+      }
+
+      // Separate into inserts and updates
+      const toInsert: Array<{
+        technician_email: string;
+        technician_name: null;
+        reward_amount: number;
+        fulfillment_date: string;
+        status: string;
+        uploaded_by: string;
+        expiry_date: string | null;
+      }> = [];
+      const toUpdate: Array<{ id: string; status: string; expiry_date: string | null }> = [];
+
+      for (const row of csvRows) {
+        const key = `${row.technician_email.toLowerCase()}|${row.fulfillment_date}|${row.reward_amount}`;
+        const existing = existingMap.get(key);
+        if (existing) {
+          toUpdate.push({
+            id: existing.id,
+            status: row.status,
+            expiry_date: row.expiry_date,
+          });
+        } else {
+          toInsert.push({
+            technician_email: row.technician_email,
+            technician_name: null,
+            reward_amount: row.reward_amount,
+            fulfillment_date: row.fulfillment_date,
+            status: row.status,
+            uploaded_by: user.id,
+            expiry_date: row.expiry_date,
+          });
+        }
+      }
+
+      // Batch insert new records
       const chunkSize = 500;
-      for (let j = 0; j < records.length; j += chunkSize) {
-        const chunk = records.slice(j, j + chunkSize);
+      for (let j = 0; j < toInsert.length; j += chunkSize) {
+        const chunk = toInsert.slice(j, j + chunkSize);
         const { error } = await supabase.from("sendoso_records").insert(chunk);
         if (error) throw error;
       }
 
-      toast.success(`Replaced with ${records.length} Sendoso records`);
+      // Batch update existing records
+      for (const upd of toUpdate) {
+        const { error } = await supabase
+          .from("sendoso_records")
+          .update({ status: upd.status, expiry_date: upd.expiry_date })
+          .eq("id", upd.id);
+        if (error) throw error;
+      }
+
+      toast.success(`Imported ${toInsert.length} new records, updated ${toUpdate.length} existing records`);
       fetchAllData();
     } catch (error) {
       console.error("Upload error:", error);
