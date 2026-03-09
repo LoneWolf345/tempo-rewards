@@ -79,6 +79,7 @@ export type Database = {
       }
       tempo_submissions: {
         Row: {
+          gift_card_code: string | null
           id: string
           status: string
           submission_date: string
@@ -89,6 +90,7 @@ export type Database = {
           upsell_amount: number
         }
         Insert: {
+          gift_card_code?: string | null
           id?: string
           status?: string
           submission_date: string
@@ -99,6 +101,7 @@ export type Database = {
           upsell_amount: number
         }
         Update: {
+          gift_card_code?: string | null
           id?: string
           status?: string
           submission_date?: string

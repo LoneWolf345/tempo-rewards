@@ -19,6 +19,7 @@ interface TempoSubmission {
   upsell_amount: number;
   submission_date: string;
   status: string;
+  gift_card_code: string | null;
 }
 
 interface SendosoRecord {
@@ -30,16 +31,25 @@ interface SendosoRecord {
   status: string;
 }
 
+interface RewardRecord {
+  id: string;
+  email: string;
+  amount: number;
+  date: string;
+  status: string;
+  source: "Sendoso" | "TeMPO";
+}
+
 interface EmailSummary {
   email: string;
   tempoCount: number;
   tempoTotal: number;
-  sendosoCount: number;
-  sendosoTotal: number;
+  rewardCount: number;
+  rewardTotal: number;
   difference: number;
   hasMismatch: boolean;
   tempoRecords: TempoSubmission[];
-  sendosoRecords: SendosoRecord[];
+  rewardRecords: RewardRecord[];
 }
 
 export default function Dashboard() {
@@ -101,34 +111,61 @@ export default function Dashboard() {
     }
   };
 
+  const isUUID = (code: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
+
   const emailSummaries = useMemo(() => {
     const map = new Map<string, EmailSummary>();
 
+    const getOrCreate = (key: string): EmailSummary => {
+      if (!map.has(key)) {
+        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, rewardCount: 0, rewardTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], rewardRecords: [] });
+      }
+      return map.get(key)!;
+    };
+
     for (const t of tempoSubmissions) {
       const key = t.technician_email.toLowerCase();
-      if (!map.has(key)) {
-        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, sendosoCount: 0, sendosoTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], sendosoRecords: [] });
-      }
-      const entry = map.get(key)!;
+      const entry = getOrCreate(key);
+      // All TeMPO records count as submissions
       entry.tempoCount++;
       entry.tempoTotal += Number(t.upsell_amount);
       entry.tempoRecords.push(t);
+
+      // Short gift card codes (non-UUID) also count as rewards (TeMPO-issued)
+      const code = t.gift_card_code?.trim();
+      if (code && !isUUID(code)) {
+        entry.rewardCount++;
+        entry.rewardTotal += Number(t.upsell_amount);
+        entry.rewardRecords.push({
+          id: t.id,
+          email: key,
+          amount: Number(t.upsell_amount),
+          date: t.submission_date,
+          status: t.status,
+          source: "TeMPO",
+        });
+      }
     }
 
     for (const s of sendosoRecords) {
       const key = s.technician_email.toLowerCase();
-      if (!map.has(key)) {
-        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, sendosoCount: 0, sendosoTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], sendosoRecords: [] });
-      }
-      const entry = map.get(key)!;
-      entry.sendosoCount++;
-      entry.sendosoTotal += Number(s.reward_amount);
-      entry.sendosoRecords.push(s);
+      const entry = getOrCreate(key);
+      entry.rewardCount++;
+      entry.rewardTotal += Number(s.reward_amount);
+      entry.rewardRecords.push({
+        id: s.id,
+        email: key,
+        amount: Number(s.reward_amount),
+        date: s.fulfillment_date,
+        status: s.status,
+        source: "Sendoso",
+      });
     }
 
     for (const entry of map.values()) {
-      entry.difference = entry.tempoTotal - entry.sendosoTotal;
-      entry.hasMismatch = entry.tempoCount !== entry.sendosoCount || Math.abs(entry.difference) > 0.01;
+      entry.difference = entry.tempoTotal - entry.rewardTotal;
+      entry.hasMismatch = entry.tempoCount !== entry.rewardCount || Math.abs(entry.difference) > 0.01;
     }
 
     return Array.from(map.values());
@@ -177,8 +214,8 @@ export default function Dashboard() {
   }, [emailSummaries, searchQuery, statusFilter, sortColumn, sortDirection]);
 
   const totalSubmissions = tempoSubmissions.length;
-  const totalRewards = sendosoRecords.length;
-  const totalRewardAmount = sendosoRecords.reduce((sum, s) => sum + Number(s.reward_amount), 0);
+  const totalRewards = emailSummaries.reduce((sum, s) => sum + s.rewardCount, 0);
+  const totalRewardAmount = emailSummaries.reduce((sum, s) => sum + s.rewardTotal, 0);
   const mismatchCount = emailSummaries.filter((s) => s.hasMismatch).length;
 
   const toggleExpand = (email: string) => {
@@ -251,7 +288,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalRewards}</div>
-              <p className="text-xs text-muted-foreground">Sendoso gift cards</p>
+              <p className="text-xs text-muted-foreground">Sendoso + TeMPO rewards</p>
             </CardContent>
           </Card>
 
@@ -326,11 +363,11 @@ export default function Dashboard() {
                     <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("tempoTotal")}>
                       <span className="flex items-center justify-end">Submission Total<SortIcon column="tempoTotal" /></span>
                     </TableHead>
-                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("sendosoCount")}>
-                      <span className="flex items-center justify-end">Rewards<SortIcon column="sendosoCount" /></span>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("rewardCount")}>
+                      <span className="flex items-center justify-end">Rewards<SortIcon column="rewardCount" /></span>
                     </TableHead>
-                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("sendosoTotal")}>
-                      <span className="flex items-center justify-end">Reward Total<SortIcon column="sendosoTotal" /></span>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("rewardTotal")}>
+                      <span className="flex items-center justify-end">Reward Total<SortIcon column="rewardTotal" /></span>
                     </TableHead>
                     <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("difference")}>
                       <span className="flex items-center justify-end">Difference<SortIcon column="difference" /></span>
@@ -354,8 +391,8 @@ export default function Dashboard() {
                               <TableCell className="font-medium">{summary.email}</TableCell>
                               <TableCell className="text-right">{summary.tempoCount}</TableCell>
                               <TableCell className="text-right">${summary.tempoTotal.toFixed(2)}</TableCell>
-                              <TableCell className="text-right">{summary.sendosoCount}</TableCell>
-                              <TableCell className="text-right">${summary.sendosoTotal.toFixed(2)}</TableCell>
+                              <TableCell className="text-right">{summary.rewardCount}</TableCell>
+                              <TableCell className="text-right">${summary.rewardTotal.toFixed(2)}</TableCell>
                               <TableCell className={`text-right font-semibold ${summary.hasMismatch ? "text-destructive" : ""}`}>
                                 {summary.difference > 0 ? "+" : ""}${summary.difference.toFixed(2)}
                               </TableCell>
@@ -398,10 +435,10 @@ export default function Dashboard() {
                                       </Table>
                                     )}
                                   </div>
-                                  {/* Sendoso detail */}
+                                  {/* Rewards detail */}
                                   <div>
-                                    <p className="mb-2 text-sm font-semibold">Sendoso Rewards</p>
-                                    {summary.sendosoRecords.length === 0 ? (
+                                    <p className="mb-2 text-sm font-semibold">Rewards</p>
+                                    {summary.rewardRecords.length === 0 ? (
                                       <p className="text-xs text-muted-foreground">None</p>
                                     ) : (
                                       <Table>
@@ -410,14 +447,20 @@ export default function Dashboard() {
                                             <TableHead>Date</TableHead>
                                             <TableHead>Amount</TableHead>
                                             <TableHead>Status</TableHead>
+                                            <TableHead>Source</TableHead>
                                           </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                          {summary.sendosoRecords.map((r) => (
+                                          {summary.rewardRecords.map((r) => (
                                             <TableRow key={r.id}>
-                                              <TableCell>{format(new Date(r.fulfillment_date), "MMM d, yyyy")}</TableCell>
-                                              <TableCell>${Number(r.reward_amount).toFixed(2)}</TableCell>
+                                              <TableCell>{format(new Date(r.date), "MMM d, yyyy")}</TableCell>
+                                              <TableCell>${r.amount.toFixed(2)}</TableCell>
                                               <TableCell><Badge className={getStatusStyles(r.status)}>{r.status}</Badge></TableCell>
+                                              <TableCell>
+                                                <Badge variant={r.source === "TeMPO" ? "outline" : "secondary"}>
+                                                  {r.source}
+                                                </Badge>
+                                              </TableCell>
                                             </TableRow>
                                           ))}
                                         </TableBody>

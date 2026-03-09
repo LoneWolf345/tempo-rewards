@@ -1,0 +1,1 @@
+ALTER TABLE tempo_submissions ADD COLUMN gift_card_code text;
