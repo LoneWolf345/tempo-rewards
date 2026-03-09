@@ -131,11 +131,50 @@ export default function Dashboard() {
       entry.hasMismatch = entry.tempoCount !== entry.sendosoCount || Math.abs(entry.difference) > 0.01;
     }
 
-    return Array.from(map.values()).sort((a, b) => {
-      if (a.hasMismatch !== b.hasMismatch) return a.hasMismatch ? -1 : 1;
-      return a.email.localeCompare(b.email);
-    });
+    return Array.from(map.values());
   }, [tempoSubmissions, sendosoRecords]);
+
+  const filteredAndSortedSummaries = useMemo(() => {
+    let result = emailSummaries;
+
+    // Filter by search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((s) => s.email.includes(q));
+    }
+
+    // Filter by status
+    if (statusFilter === "mismatch") {
+      result = result.filter((s) => s.hasMismatch);
+    } else if (statusFilter === "matched") {
+      result = result.filter((s) => !s.hasMismatch);
+    }
+
+    // Sort
+    if (sortColumn) {
+      result = [...result].sort((a, b) => {
+        const aVal = a[sortColumn];
+        const bVal = b[sortColumn];
+        let cmp = 0;
+        if (typeof aVal === "string" && typeof bVal === "string") {
+          cmp = aVal.localeCompare(bVal);
+        } else if (typeof aVal === "number" && typeof bVal === "number") {
+          cmp = aVal - bVal;
+        } else if (typeof aVal === "boolean" && typeof bVal === "boolean") {
+          cmp = (aVal ? 1 : 0) - (bVal ? 1 : 0);
+        }
+        return sortDirection === "asc" ? cmp : -cmp;
+      });
+    } else {
+      // Default sort: mismatches first, then alphabetical
+      result = [...result].sort((a, b) => {
+        if (a.hasMismatch !== b.hasMismatch) return a.hasMismatch ? -1 : 1;
+        return a.email.localeCompare(b.email);
+      });
+    }
+
+    return result;
+  }, [emailSummaries, searchQuery, statusFilter, sortColumn, sortDirection]);
 
   const totalSubmissions = tempoSubmissions.length;
   const totalRewards = sendosoRecords.length;
