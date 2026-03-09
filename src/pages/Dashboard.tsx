@@ -285,28 +285,63 @@ export default function Dashboard() {
             <CardDescription>
               Per-email comparison of TeMPO submissions vs Sendoso rewards. Click a row to see details.
             </CardDescription>
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "mismatch" | "matched")}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Filter status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All ({emailSummaries.length})</SelectItem>
+                  <SelectItem value="mismatch">Mismatch ({mismatchCount})</SelectItem>
+                  <SelectItem value="matched">Matched ({emailSummaries.length - mismatchCount})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <p className="text-muted-foreground">Loading...</p>
-            ) : emailSummaries.length === 0 ? (
+            ) : filteredAndSortedSummaries.length === 0 ? (
               <p className="text-muted-foreground">No data found</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-8"></TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead className="text-right">Submissions</TableHead>
-                    <TableHead className="text-right">Submission Total</TableHead>
-                    <TableHead className="text-right">Rewards</TableHead>
-                    <TableHead className="text-right">Reward Total</TableHead>
-                    <TableHead className="text-right">Difference</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => handleSort("email")}>
+                      <span className="flex items-center">Email<SortIcon column="email" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("tempoCount")}>
+                      <span className="flex items-center justify-end">Submissions<SortIcon column="tempoCount" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("tempoTotal")}>
+                      <span className="flex items-center justify-end">Submission Total<SortIcon column="tempoTotal" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("sendosoCount")}>
+                      <span className="flex items-center justify-end">Rewards<SortIcon column="sendosoCount" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("sendosoTotal")}>
+                      <span className="flex items-center justify-end">Reward Total<SortIcon column="sendosoTotal" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("difference")}>
+                      <span className="flex items-center justify-end">Difference<SortIcon column="difference" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => handleSort("hasMismatch")}>
+                      <span className="flex items-center">Status<SortIcon column="hasMismatch" /></span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {emailSummaries.map((summary) => {
+                  {filteredAndSortedSummaries.map((summary) => {
                     const isExpanded = expandedEmails.has(summary.email);
                     return (
                       <Collapsible key={summary.email} open={isExpanded} onOpenChange={() => toggleExpand(summary.email)} asChild>
