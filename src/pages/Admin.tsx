@@ -203,9 +203,13 @@ export default function Admin() {
         });
       }
 
-      const { error } = await supabase.from("sendoso_records").insert(records);
-
-      if (error) throw error;
+      // Batch insert in chunks of 500 to avoid Supabase row limit
+      const chunkSize = 500;
+      for (let j = 0; j < records.length; j += chunkSize) {
+        const chunk = records.slice(j, j + chunkSize);
+        const { error } = await supabase.from("sendoso_records").insert(chunk);
+        if (error) throw error;
+      }
 
       toast.success(`Uploaded ${records.length} Sendoso records`);
       fetchAllData();
