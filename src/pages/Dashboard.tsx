@@ -219,7 +219,7 @@ export default function Dashboard() {
 
     const getOrCreate = (key: string): EmailSummary => {
       if (!map.has(key)) {
-        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, rewardCount: 0, rewardTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], rewardRecords: [], matchedRows: [] });
+        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, rewardCount: 0, rewardTotal: 0, difference: 0, hasMismatch: false, reconciliationStatus: "matched", tempoRecords: [], rewardRecords: [], matchedRows: [] });
       }
       return map.get(key)!;
     };
