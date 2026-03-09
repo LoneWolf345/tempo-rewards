@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { LogOut, FileText, Gift, AlertTriangle, DollarSign, ChevronDown, ChevronRight } from "lucide-react";
+import { LogOut, FileText, Gift, AlertTriangle, DollarSign, ChevronDown, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Search } from "lucide-react";
 import { format } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 
@@ -46,6 +48,10 @@ export default function Dashboard() {
   const [sendosoRecords, setSendosoRecords] = useState<SendosoRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "mismatch" | "matched">("all");
+  const [sortColumn, setSortColumn] = useState<keyof EmailSummary | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     fetchData();
@@ -125,11 +131,50 @@ export default function Dashboard() {
       entry.hasMismatch = entry.tempoCount !== entry.sendosoCount || Math.abs(entry.difference) > 0.01;
     }
 
-    return Array.from(map.values()).sort((a, b) => {
-      if (a.hasMismatch !== b.hasMismatch) return a.hasMismatch ? -1 : 1;
-      return a.email.localeCompare(b.email);
-    });
+    return Array.from(map.values());
   }, [tempoSubmissions, sendosoRecords]);
+
+  const filteredAndSortedSummaries = useMemo(() => {
+    let result = emailSummaries;
+
+    // Filter by search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((s) => s.email.includes(q));
+    }
+
+    // Filter by status
+    if (statusFilter === "mismatch") {
+      result = result.filter((s) => s.hasMismatch);
+    } else if (statusFilter === "matched") {
+      result = result.filter((s) => !s.hasMismatch);
+    }
+
+    // Sort
+    if (sortColumn) {
+      result = [...result].sort((a, b) => {
+        const aVal = a[sortColumn];
+        const bVal = b[sortColumn];
+        let cmp = 0;
+        if (typeof aVal === "string" && typeof bVal === "string") {
+          cmp = aVal.localeCompare(bVal);
+        } else if (typeof aVal === "number" && typeof bVal === "number") {
+          cmp = aVal - bVal;
+        } else if (typeof aVal === "boolean" && typeof bVal === "boolean") {
+          cmp = (aVal ? 1 : 0) - (bVal ? 1 : 0);
+        }
+        return sortDirection === "asc" ? cmp : -cmp;
+      });
+    } else {
+      // Default sort: mismatches first, then alphabetical
+      result = [...result].sort((a, b) => {
+        if (a.hasMismatch !== b.hasMismatch) return a.hasMismatch ? -1 : 1;
+        return a.email.localeCompare(b.email);
+      });
+    }
+
+    return result;
+  }, [emailSummaries, searchQuery, statusFilter, sortColumn, sortDirection]);
 
   const totalSubmissions = tempoSubmissions.length;
   const totalRewards = sendosoRecords.length;
@@ -143,6 +188,21 @@ export default function Dashboard() {
       else next.add(email);
       return next;
     });
+  };
+
+  const handleSort = (column: keyof EmailSummary) => {
+    if (sortColumn === column) {
+      if (sortDirection === "asc") setSortDirection("desc");
+      else { setSortColumn(null); setSortDirection("asc"); }
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ column }: { column: keyof EmailSummary }) => {
+    if (sortColumn !== column) return <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />;
+    return sortDirection === "asc" ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />;
   };
 
   return (
@@ -225,28 +285,63 @@ export default function Dashboard() {
             <CardDescription>
               Per-email comparison of TeMPO submissions vs Sendoso rewards. Click a row to see details.
             </CardDescription>
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "mismatch" | "matched")}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Filter status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All ({emailSummaries.length})</SelectItem>
+                  <SelectItem value="mismatch">Mismatch ({mismatchCount})</SelectItem>
+                  <SelectItem value="matched">Matched ({emailSummaries.length - mismatchCount})</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <p className="text-muted-foreground">Loading...</p>
-            ) : emailSummaries.length === 0 ? (
+            ) : filteredAndSortedSummaries.length === 0 ? (
               <p className="text-muted-foreground">No data found</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-8"></TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead className="text-right">Submissions</TableHead>
-                    <TableHead className="text-right">Submission Total</TableHead>
-                    <TableHead className="text-right">Rewards</TableHead>
-                    <TableHead className="text-right">Reward Total</TableHead>
-                    <TableHead className="text-right">Difference</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => handleSort("email")}>
+                      <span className="flex items-center">Email<SortIcon column="email" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("tempoCount")}>
+                      <span className="flex items-center justify-end">Submissions<SortIcon column="tempoCount" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("tempoTotal")}>
+                      <span className="flex items-center justify-end">Submission Total<SortIcon column="tempoTotal" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("sendosoCount")}>
+                      <span className="flex items-center justify-end">Rewards<SortIcon column="sendosoCount" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("sendosoTotal")}>
+                      <span className="flex items-center justify-end">Reward Total<SortIcon column="sendosoTotal" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none text-right" onClick={() => handleSort("difference")}>
+                      <span className="flex items-center justify-end">Difference<SortIcon column="difference" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => handleSort("hasMismatch")}>
+                      <span className="flex items-center">Status<SortIcon column="hasMismatch" /></span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {emailSummaries.map((summary) => {
+                  {filteredAndSortedSummaries.map((summary) => {
                     const isExpanded = expandedEmails.has(summary.email);
                     return (
                       <Collapsible key={summary.email} open={isExpanded} onOpenChange={() => toggleExpand(summary.email)} asChild>
