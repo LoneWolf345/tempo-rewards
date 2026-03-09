@@ -81,30 +81,84 @@ export default function Admin() {
 
   useEffect(() => {
     if (isAdmin) {
-      fetchAllData();
+      fetchBaseData();
+      fetchTempoPage();
+      fetchSendosoPage();
     }
   }, [isAdmin]);
 
-  const fetchAllData = async () => {
+  useEffect(() => {
+    if (isAdmin) fetchTempoPage();
+  }, [tempoPage, tempoSearch]);
+
+  useEffect(() => {
+    if (isAdmin) fetchSendosoPage();
+  }, [sendosoPage, sendosoSearch]);
+
+  const fetchBaseData = async () => {
     setIsLoading(true);
     try {
-      const [profilesRes, rolesRes, tempoRes, sendosoRes] = await Promise.all([
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(10000),
-        supabase.from("user_roles").select("*").limit(10000),
-        supabase.from("tempo_submissions").select("*").order("submission_date", { ascending: false }).limit(10000),
-        supabase.from("sendoso_records").select("*").order("fulfillment_date", { ascending: false }).limit(10000),
+      const [profilesRes, rolesRes] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("user_roles").select("*"),
       ]);
 
       if (profilesRes.data) setProfiles(profilesRes.data as Profile[]);
       if (rolesRes.data) setUserRoles(rolesRes.data as UserRole[]);
-      if (tempoRes.data) setTempoSubmissions(tempoRes.data as TempoSubmission[]);
-      if (sendosoRes.data) setSendosoRecords(sendosoRes.data as SendosoRecord[]);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load data");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchTempoPage = async () => {
+    setTempoLoading(true);
+    try {
+      let query = supabase.from("tempo_submissions").select("*", { count: "exact" });
+      if (tempoSearch.trim()) {
+        query = query.ilike("technician_email", `%${tempoSearch.trim()}%`);
+      }
+      const { data, count, error } = await query
+        .order("submission_date", { ascending: false })
+        .range(tempoPage * PAGE_SIZE, (tempoPage + 1) * PAGE_SIZE - 1);
+
+      if (error) throw error;
+      setTempoRecords((data || []) as TempoSubmission[]);
+      setTempoTotal(count || 0);
+    } catch (error) {
+      console.error("Error fetching tempo records:", error);
+    } finally {
+      setTempoLoading(false);
+    }
+  };
+
+  const fetchSendosoPage = async () => {
+    setSendosoLoading(true);
+    try {
+      let query = supabase.from("sendoso_records").select("*", { count: "exact" });
+      if (sendosoSearch.trim()) {
+        query = query.ilike("technician_email", `%${sendosoSearch.trim()}%`);
+      }
+      const { data, count, error } = await query
+        .order("fulfillment_date", { ascending: false })
+        .range(sendosoPage * PAGE_SIZE, (sendosoPage + 1) * PAGE_SIZE - 1);
+
+      if (error) throw error;
+      setSendosoRecords((data || []) as SendosoRecord[]);
+      setSendosoTotal(count || 0);
+    } catch (error) {
+      console.error("Error fetching sendoso records:", error);
+    } finally {
+      setSendosoLoading(false);
+    }
+  };
+
+  const fetchAllData = () => {
+    fetchBaseData();
+    fetchTempoPage();
+    fetchSendosoPage();
   };
 
   const getUserRole = (userId: string) => {
