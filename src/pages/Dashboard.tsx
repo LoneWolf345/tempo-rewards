@@ -40,6 +40,12 @@ interface RewardRecord {
   source: "Sendoso" | "TeMPO";
 }
 
+interface MatchedRow {
+  tempoRecord?: TempoSubmission;
+  rewardRecord?: RewardRecord;
+  isMatched: boolean;
+}
+
 interface EmailSummary {
   email: string;
   tempoCount: number;
@@ -50,6 +56,7 @@ interface EmailSummary {
   hasMismatch: boolean;
   tempoRecords: TempoSubmission[];
   rewardRecords: RewardRecord[];
+  matchedRows: MatchedRow[];
 }
 
 export default function Dashboard() {
