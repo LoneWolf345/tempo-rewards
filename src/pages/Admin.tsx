@@ -267,31 +267,6 @@ export default function Admin() {
     }
   };
 
-  const clearTempoRecords = async () => {
-    if (!confirm("Are you sure you want to delete all TeMPO records?")) return;
-
-    const { error } = await supabase.from("tempo_submissions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    
-    if (error) {
-      toast.error("Failed to clear records");
-    } else {
-      toast.success("TeMPO records cleared");
-      fetchAllData();
-    }
-  };
-
-  const clearSendosoRecords = async () => {
-    if (!confirm("Are you sure you want to delete all Sendoso records?")) return;
-
-    const { error } = await supabase.from("sendoso_records").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    
-    if (error) {
-      toast.error("Failed to clear records");
-    } else {
-      toast.success("Sendoso records cleared");
-      fetchAllData();
-    }
-  };
 
   if (authLoading || !isAdmin) {
     return (
