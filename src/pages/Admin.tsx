@@ -513,37 +513,62 @@ export default function Admin() {
               <CardHeader>
                 <CardTitle>All TeMPO Submissions</CardTitle>
                 <CardDescription>Complete list of upsell submissions</CardDescription>
+                <div className="relative mt-2 max-w-sm">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by email..."
+                    value={tempoSearchInput}
+                    onChange={(e) => setTempoSearchInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { setTempoSearch(tempoSearchInput); setTempoPage(0); } }}
+                    className="pl-9"
+                  />
+                </div>
               </CardHeader>
               <CardContent>
-                {isLoading ? (
+                {tempoLoading ? (
                   <p className="text-muted-foreground">Loading...</p>
-                ) : tempoSubmissions.length === 0 ? (
-                  <p className="text-muted-foreground">No records uploaded yet</p>
+                ) : tempoRecords.length === 0 ? (
+                  <p className="text-muted-foreground">No records found</p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {tempoSubmissions.map((submission) => (
-                        <TableRow key={submission.id}>
-                          <TableCell>{submission.technician_email}</TableCell>
-                          <TableCell>{submission.technician_name}</TableCell>
-                          <TableCell>${Number(submission.upsell_amount).toFixed(2)}</TableCell>
-                          <TableCell>{format(new Date(submission.submission_date), "MMM d, yyyy")}</TableCell>
-                          <TableCell>
-                            <Badge className={getStatusStyles(submission.status)}>{submission.status}</Badge>
-                          </TableCell>
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Status</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {tempoRecords.map((submission) => (
+                          <TableRow key={submission.id}>
+                            <TableCell>{submission.technician_email}</TableCell>
+                            <TableCell>{submission.technician_name}</TableCell>
+                            <TableCell>${Number(submission.upsell_amount).toFixed(2)}</TableCell>
+                            <TableCell>{format(new Date(submission.submission_date), "MMM d, yyyy")}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusStyles(submission.status)}>{submission.status}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <div className="mt-4 flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Showing {tempoPage * PAGE_SIZE + 1}–{Math.min((tempoPage + 1) * PAGE_SIZE, tempoTotal)} of {tempoTotal}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" disabled={tempoPage === 0} onClick={() => setTempoPage(tempoPage - 1)}>
+                          <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                        </Button>
+                        <Button variant="outline" size="sm" disabled={(tempoPage + 1) * PAGE_SIZE >= tempoTotal} onClick={() => setTempoPage(tempoPage + 1)}>
+                          Next <ChevronRight className="ml-1 h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
