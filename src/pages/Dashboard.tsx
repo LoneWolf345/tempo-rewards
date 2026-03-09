@@ -111,34 +111,61 @@ export default function Dashboard() {
     }
   };
 
+  const isUUID = (code: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
+
   const emailSummaries = useMemo(() => {
     const map = new Map<string, EmailSummary>();
 
+    const getOrCreate = (key: string): EmailSummary => {
+      if (!map.has(key)) {
+        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, rewardCount: 0, rewardTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], rewardRecords: [] });
+      }
+      return map.get(key)!;
+    };
+
     for (const t of tempoSubmissions) {
       const key = t.technician_email.toLowerCase();
-      if (!map.has(key)) {
-        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, sendosoCount: 0, sendosoTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], sendosoRecords: [] });
-      }
-      const entry = map.get(key)!;
+      const entry = getOrCreate(key);
+      // All TeMPO records count as submissions
       entry.tempoCount++;
       entry.tempoTotal += Number(t.upsell_amount);
       entry.tempoRecords.push(t);
+
+      // Short gift card codes (non-UUID) also count as rewards (TeMPO-issued)
+      const code = t.gift_card_code?.trim();
+      if (code && !isUUID(code)) {
+        entry.rewardCount++;
+        entry.rewardTotal += Number(t.upsell_amount);
+        entry.rewardRecords.push({
+          id: t.id,
+          email: key,
+          amount: Number(t.upsell_amount),
+          date: t.submission_date,
+          status: t.status,
+          source: "TeMPO",
+        });
+      }
     }
 
     for (const s of sendosoRecords) {
       const key = s.technician_email.toLowerCase();
-      if (!map.has(key)) {
-        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, sendosoCount: 0, sendosoTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], sendosoRecords: [] });
-      }
-      const entry = map.get(key)!;
-      entry.sendosoCount++;
-      entry.sendosoTotal += Number(s.reward_amount);
-      entry.sendosoRecords.push(s);
+      const entry = getOrCreate(key);
+      entry.rewardCount++;
+      entry.rewardTotal += Number(s.reward_amount);
+      entry.rewardRecords.push({
+        id: s.id,
+        email: key,
+        amount: Number(s.reward_amount),
+        date: s.fulfillment_date,
+        status: s.status,
+        source: "Sendoso",
+      });
     }
 
     for (const entry of map.values()) {
-      entry.difference = entry.tempoTotal - entry.sendosoTotal;
-      entry.hasMismatch = entry.tempoCount !== entry.sendosoCount || Math.abs(entry.difference) > 0.01;
+      entry.difference = entry.tempoTotal - entry.rewardTotal;
+      entry.hasMismatch = entry.tempoCount !== entry.rewardCount || Math.abs(entry.difference) > 0.01;
     }
 
     return Array.from(map.values());
