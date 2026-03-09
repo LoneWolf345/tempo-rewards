@@ -379,11 +379,11 @@ export default function Admin() {
             </TabsTrigger>
             <TabsTrigger value="tempo">
               <FileText className="mr-2 h-4 w-4" />
-              TeMPO Records ({tempoSubmissions.length})
+              TeMPO Records ({tempoTotal})
             </TabsTrigger>
             <TabsTrigger value="sendoso">
               <Gift className="mr-2 h-4 w-4" />
-              Sendoso Records ({sendosoRecords.length})
+              Sendoso Records ({sendosoTotal})
             </TabsTrigger>
           </TabsList>
 
