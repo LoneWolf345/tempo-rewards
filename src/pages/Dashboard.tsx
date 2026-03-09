@@ -125,8 +125,10 @@ export default function Dashboard() {
   const matchRecords = (tempoRecords: TempoSubmission[], rewardRecords: RewardRecord[]): MatchedRow[] => {
     const sortedTempo = [...tempoRecords].sort((a, b) => new Date(a.submission_date).getTime() - new Date(b.submission_date).getTime());
     const usedRewards = new Set<string>();
+    const usedTempo = new Set<string>();
     const rows: MatchedRow[] = [];
 
+    // Pass 1: Exact 1:1 match
     for (const t of sortedTempo) {
       let bestReward: RewardRecord | null = null;
       let bestDiff = Infinity;
@@ -137,7 +139,6 @@ export default function Dashboard() {
         if (Math.abs(Number(t.upsell_amount) - r.amount) > 0.01) continue;
         const rDate = new Date(r.date).getTime();
         const diff = rDate - tDate;
-        // Reward should be on or after submission, within 7 days
         if (diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
           bestDiff = diff;
           bestReward = r;
@@ -146,23 +147,65 @@ export default function Dashboard() {
 
       if (bestReward) {
         usedRewards.add(bestReward.id);
-        rows.push({ tempoRecord: t, rewardRecord: bestReward, isMatched: true });
-      } else {
-        rows.push({ tempoRecord: t, isMatched: false });
+        usedTempo.add(t.id);
+        rows.push({ tempoRecords: [t], rewardRecord: bestReward, isMatched: true });
       }
     }
 
-    // Add unmatched rewards
+    // Pass 2: Group match — find subsets of unmatched submissions that sum to an unmatched reward
+    const unmatchedTempo = sortedTempo.filter(t => !usedTempo.has(t.id));
+    const unmatchedRewards = rewardRecords.filter(r => !usedRewards.has(r.id));
+
+    const findSubsetSum = (items: TempoSubmission[], target: number, rewardDate: number): TempoSubmission[] | null => {
+      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+      const eligible = items.filter(t => {
+        const diff = rewardDate - new Date(t.submission_date).getTime();
+        return diff >= 0 && diff <= SEVEN_DAYS;
+      });
+
+      // Simple recursive subset search (safe for small per-technician lists)
+      const search = (idx: number, remaining: number, current: TempoSubmission[]): TempoSubmission[] | null => {
+        if (Math.abs(remaining) <= 0.01 && current.length > 1) return current;
+        if (idx >= eligible.length || remaining < -0.01) return null;
+        // Include
+        const withItem = search(idx + 1, remaining - Number(eligible[idx].upsell_amount), [...current, eligible[idx]]);
+        if (withItem) return withItem;
+        // Exclude
+        return search(idx + 1, remaining, current);
+      };
+
+      return search(0, target, []);
+    };
+
+    const groupUsedTempo = new Set<string>();
+    for (const r of unmatchedRewards) {
+      const availableTempo = unmatchedTempo.filter(t => !groupUsedTempo.has(t.id));
+      const subset = findSubsetSum(availableTempo, r.amount, new Date(r.date).getTime());
+      if (subset) {
+        subset.forEach(t => groupUsedTempo.add(t.id));
+        usedRewards.add(r.id);
+        rows.push({ tempoRecords: subset, rewardRecord: r, isMatched: true, isGroupMatch: true });
+      }
+    }
+
+    // Add remaining unmatched tempo
+    for (const t of sortedTempo) {
+      if (!usedTempo.has(t.id) && !groupUsedTempo.has(t.id)) {
+        rows.push({ tempoRecords: [t], isMatched: false });
+      }
+    }
+
+    // Add remaining unmatched rewards
     for (const r of rewardRecords) {
       if (!usedRewards.has(r.id)) {
         rows.push({ rewardRecord: r, isMatched: false });
       }
     }
 
-    // Sort: most recent first by the earliest date in each row
+    // Sort: most recent first
     rows.sort((a, b) => {
-      const dateA = a.tempoRecord ? new Date(a.tempoRecord.submission_date).getTime() : new Date(a.rewardRecord!.date).getTime();
-      const dateB = b.tempoRecord ? new Date(b.tempoRecord.submission_date).getTime() : new Date(b.rewardRecord!.date).getTime();
+      const dateA = a.tempoRecords?.[0] ? new Date(a.tempoRecords[0].submission_date).getTime() : new Date(a.rewardRecord!.date).getTime();
+      const dateB = b.tempoRecords?.[0] ? new Date(b.tempoRecords[0].submission_date).getTime() : new Date(b.rewardRecord!.date).getTime();
       return dateB - dateA;
     });
 
