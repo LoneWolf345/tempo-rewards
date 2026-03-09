@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { LogOut, FileText, Gift, AlertTriangle, DollarSign } from "lucide-react";
 import { format } from "date-fns";
+import { getStatusStyles } from "@/lib/statusStyles";
 
 interface TempoSubmission {
   id: string;
@@ -208,7 +209,7 @@ export default function Dashboard() {
                         <TableCell>{format(new Date(submission.submission_date), "MMM d, yyyy")}</TableCell>
                         <TableCell>${Number(submission.upsell_amount).toFixed(2)}</TableCell>
                         <TableCell>
-                          <Badge variant="secondary">{submission.status}</Badge>
+                          <Badge className={getStatusStyles(submission.status)}>{submission.status}</Badge>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -244,7 +245,7 @@ export default function Dashboard() {
                         <TableCell>{format(new Date(record.fulfillment_date), "MMM d, yyyy")}</TableCell>
                         <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
                         <TableCell>
-                          <Badge variant="default">{record.status}</Badge>
+                          <Badge className={getStatusStyles(record.status)}>{record.status}</Badge>
                         </TableCell>
                       </TableRow>
                     ))}
