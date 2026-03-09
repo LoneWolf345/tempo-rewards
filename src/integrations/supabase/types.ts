@@ -83,7 +83,7 @@ export type Database = {
           status: string
           submission_date: string
           technician_email: string
-          technician_name: string
+          technician_name: string | null
           uploaded_at: string
           uploaded_by: string
           upsell_amount: number
@@ -93,7 +93,7 @@ export type Database = {
           status?: string
           submission_date: string
           technician_email: string
-          technician_name: string
+          technician_name?: string | null
           uploaded_at?: string
           uploaded_by: string
           upsell_amount: number
@@ -103,7 +103,7 @@ export type Database = {
           status?: string
           submission_date?: string
           technician_email?: string
-          technician_name?: string
+          technician_name?: string | null
           uploaded_at?: string
           uploaded_by?: string
           upsell_amount?: number
