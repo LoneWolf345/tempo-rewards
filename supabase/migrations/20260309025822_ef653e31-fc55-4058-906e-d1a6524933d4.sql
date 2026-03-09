@@ -1,0 +1,1 @@
+ALTER TABLE public.tempo_submissions ALTER COLUMN technician_name DROP NOT NULL;

@@ -105,14 +105,14 @@ export default function Admin() {
       const lines = text.split("\n").filter((line) => line.trim());
       const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
 
-      const emailIdx = headers.findIndex((h) => h.includes("email"));
-      const nameIdx = headers.findIndex((h) => h.includes("name"));
-      const amountIdx = headers.findIndex((h) => h.includes("amount"));
-      const dateIdx = headers.findIndex((h) => h.includes("date"));
-      const statusIdx = headers.findIndex((h) => h.includes("status"));
+      // Map TeMPO columns: issued_to_email, amount, issued_at, status
+      const emailIdx = headers.findIndex((h) => h.includes("issued_to_email") || h.includes("email"));
+      const amountIdx = headers.findIndex((h) => h === "amount" || h.includes("amount"));
+      const dateIdx = headers.findIndex((h) => h.includes("issued_at") || h.includes("date"));
+      const statusIdx = headers.findIndex((h) => h === "status");
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
-        toast.error("CSV must contain email, amount, and date columns");
+        toast.error("CSV must contain issued_to_email, amount, and issued_at columns");
         return;
       }
 
@@ -121,12 +121,18 @@ export default function Admin() {
         const values = lines[i].split(",").map((v) => v.trim().replace(/"/g, ""));
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
 
+        // Parse datetime format "2025-09-03 00:00:00.000" to date "2025-09-03"
+        let dateValue = values[dateIdx];
+        if (dateValue.includes(" ")) {
+          dateValue = dateValue.split(" ")[0];
+        }
+
         records.push({
           technician_email: values[emailIdx],
-          technician_name: nameIdx >= 0 ? values[nameIdx] : "",
+          technician_name: null,
           upsell_amount: parseFloat(values[amountIdx]) || 0,
-          submission_date: values[dateIdx],
-          status: statusIdx >= 0 ? values[statusIdx] : "submitted",
+          submission_date: dateValue,
+          status: statusIdx >= 0 ? values[statusIdx] : "Issued",
           uploaded_by: user.id,
         });
       }
@@ -334,8 +340,8 @@ export default function Admin() {
                     <FileText className="h-5 w-5" />
                     Upload TeMPO CSV
                   </CardTitle>
-                  <CardDescription>
-                    Upload upsell submissions from TeMPO. CSV should have columns: email, name, amount, date, status
+                <CardDescription>
+                    Upload gift card records from TeMPO. Required columns: issued_to_email, amount, issued_at. Optional: status
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
