@@ -454,14 +454,15 @@ export default function Dashboard() {
                   className="pl-9"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "mismatch" | "matched")}>
-                <SelectTrigger className="w-[160px]">
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "mismatch" | "matched" | "balanced")}>
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All ({emailSummaries.length})</SelectItem>
                   <SelectItem value="mismatch">Mismatch ({mismatchCount})</SelectItem>
-                  <SelectItem value="matched">Matched ({emailSummaries.length - mismatchCount})</SelectItem>
+                  <SelectItem value="balanced">Balanced ({balancedCount})</SelectItem>
+                  <SelectItem value="matched">Matched ({matchedCount})</SelectItem>
                 </SelectContent>
               </Select>
             </div>
