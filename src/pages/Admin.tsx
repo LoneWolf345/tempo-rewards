@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
 import { ArrowLeft, Upload, Users, FileText, Gift, Trash2, Shield } from "lucide-react";
 import { format } from "date-fns";
+import { getStatusStyles } from "@/lib/statusStyles";
 
 interface Profile {
   id: string;
