@@ -161,7 +161,7 @@ export default function Dashboard() {
       const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
       const eligible = items.filter(t => {
         const diff = rewardDate - new Date(t.submission_date).getTime();
-        return diff >= 0 && diff <= SEVEN_DAYS;
+        return diff >= 0 && diff <= FOURTEEN_DAYS;
       });
 
       // Simple recursive subset search (safe for small per-technician lists)
