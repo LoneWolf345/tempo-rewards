@@ -580,37 +580,62 @@ export default function Admin() {
               <CardHeader>
                 <CardTitle>All Sendoso Records</CardTitle>
                 <CardDescription>Complete list of gift card fulfillments</CardDescription>
+                <div className="relative mt-2 max-w-sm">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by email..."
+                    value={sendosoSearchInput}
+                    onChange={(e) => setSendosoSearchInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { setSendosoSearch(sendosoSearchInput); setSendosoPage(0); } }}
+                    className="pl-9"
+                  />
+                </div>
               </CardHeader>
               <CardContent>
-                {isLoading ? (
+                {sendosoLoading ? (
                   <p className="text-muted-foreground">Loading...</p>
                 ) : sendosoRecords.length === 0 ? (
-                  <p className="text-muted-foreground">No records uploaded yet</p>
+                  <p className="text-muted-foreground">No records found</p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sendosoRecords.map((record) => (
-                        <TableRow key={record.id}>
-                          <TableCell>{record.technician_email}</TableCell>
-                          <TableCell>{record.technician_name}</TableCell>
-                          <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
-                          <TableCell>{format(new Date(record.fulfillment_date), "MMM d, yyyy")}</TableCell>
-                          <TableCell>
-                            <Badge className={getStatusStyles(record.status)}>{record.status}</Badge>
-                          </TableCell>
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Status</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {sendosoRecords.map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell>{record.technician_email}</TableCell>
+                            <TableCell>{record.technician_name}</TableCell>
+                            <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
+                            <TableCell>{format(new Date(record.fulfillment_date), "MMM d, yyyy")}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusStyles(record.status)}>{record.status}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <div className="mt-4 flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Showing {sendosoPage * PAGE_SIZE + 1}–{Math.min((sendosoPage + 1) * PAGE_SIZE, sendosoTotal)} of {sendosoTotal}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" disabled={sendosoPage === 0} onClick={() => setSendosoPage(sendosoPage - 1)}>
+                          <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                        </Button>
+                        <Button variant="outline" size="sm" disabled={(sendosoPage + 1) * PAGE_SIZE >= sendosoTotal} onClick={() => setSendosoPage(sendosoPage + 1)}>
+                          Next <ChevronRight className="ml-1 h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
