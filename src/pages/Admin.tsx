@@ -162,7 +162,9 @@ export default function Admin() {
   };
 
   const getUserRole = (userId: string) => {
-    return userRoles.find((r) => r.user_id === userId)?.role || "technician";
+    const roles = userRoles.filter((r) => r.user_id === userId).map((r) => r.role);
+    if (roles.includes("admin")) return "admin";
+    return roles[0] || "technician";
   };
 
   const handleTempoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
