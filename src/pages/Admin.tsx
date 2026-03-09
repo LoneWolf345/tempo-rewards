@@ -364,15 +364,6 @@ export default function Admin() {
                       disabled={isUploading}
                     />
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={clearTempoRecords}
-                    disabled={tempoSubmissions.length === 0}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Clear All TeMPO Records
-                  </Button>
                 </CardContent>
               </Card>
 
