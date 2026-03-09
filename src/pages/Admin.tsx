@@ -367,7 +367,7 @@ export default function Admin() {
                     Upload Sendoso CSV
                   </CardTitle>
                   <CardDescription>
-                    Upload gift card fulfillment records from Sendoso. CSV should have columns: email, name, amount, date, status
+                    Upload gift card fulfillment records from Sendoso. Required columns: recipient_email, egift_price, created_at. Optional: status
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
