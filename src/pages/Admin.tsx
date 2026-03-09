@@ -73,10 +73,10 @@ export default function Admin() {
     setIsLoading(true);
     try {
       const [profilesRes, rolesRes, tempoRes, sendosoRes] = await Promise.all([
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-        supabase.from("user_roles").select("*"),
-        supabase.from("tempo_submissions").select("*").order("submission_date", { ascending: false }),
-        supabase.from("sendoso_records").select("*").order("fulfillment_date", { ascending: false }),
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(10000),
+        supabase.from("user_roles").select("*").limit(10000),
+        supabase.from("tempo_submissions").select("*").order("submission_date", { ascending: false }).limit(10000),
+        supabase.from("sendoso_records").select("*").order("fulfillment_date", { ascending: false }).limit(10000),
       ]);
 
       if (profilesRes.data) setProfiles(profilesRes.data as Profile[]);
@@ -137,9 +137,13 @@ export default function Admin() {
         });
       }
 
-      const { error } = await supabase.from("tempo_submissions").insert(records);
-
-      if (error) throw error;
+      // Batch insert in chunks of 500 to avoid Supabase row limit
+      const chunkSize = 500;
+      for (let j = 0; j < records.length; j += chunkSize) {
+        const chunk = records.slice(j, j + chunkSize);
+        const { error } = await supabase.from("tempo_submissions").insert(chunk);
+        if (error) throw error;
+      }
 
       toast.success(`Uploaded ${records.length} TeMPO records`);
       fetchAllData();
@@ -199,9 +203,13 @@ export default function Admin() {
         });
       }
 
-      const { error } = await supabase.from("sendoso_records").insert(records);
-
-      if (error) throw error;
+      // Batch insert in chunks of 500 to avoid Supabase row limit
+      const chunkSize = 500;
+      for (let j = 0; j < records.length; j += chunkSize) {
+        const chunk = records.slice(j, j + chunkSize);
+        const { error } = await supabase.from("sendoso_records").insert(chunk);
+        if (error) throw error;
+      }
 
       toast.success(`Uploaded ${records.length} Sendoso records`);
       fetchAllData();
