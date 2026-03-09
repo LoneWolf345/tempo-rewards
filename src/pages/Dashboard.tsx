@@ -56,6 +56,7 @@ interface EmailSummary {
   rewardTotal: number;
   difference: number;
   hasMismatch: boolean;
+  reconciliationStatus: "matched" | "balanced" | "mismatch";
   tempoRecords: TempoSubmission[];
   rewardRecords: RewardRecord[];
   matchedRows: MatchedRow[];
@@ -68,7 +69,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "mismatch" | "matched">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "mismatch" | "matched" | "balanced">("all");
   const [sortColumn, setSortColumn] = useState<keyof EmailSummary | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
@@ -218,7 +219,7 @@ export default function Dashboard() {
 
     const getOrCreate = (key: string): EmailSummary => {
       if (!map.has(key)) {
-        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, rewardCount: 0, rewardTotal: 0, difference: 0, hasMismatch: false, tempoRecords: [], rewardRecords: [], matchedRows: [] });
+        map.set(key, { email: key, tempoCount: 0, tempoTotal: 0, rewardCount: 0, rewardTotal: 0, difference: 0, hasMismatch: false, reconciliationStatus: "matched", tempoRecords: [], rewardRecords: [], matchedRows: [] });
       }
       return map.get(key)!;
     };
@@ -269,9 +270,20 @@ export default function Dashboard() {
       entry.rewardRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       entry.difference = entry.tempoTotal - entry.rewardTotal;
       entry.matchedRows = matchRecords(entry.tempoRecords, entry.rewardRecords);
-      // Mismatch = any unmatched rows exist OR totals don't align
       const hasUnmatchedRows = entry.matchedRows.some(row => !row.isMatched);
-      entry.hasMismatch = hasUnmatchedRows || Math.abs(entry.difference) > 0.01;
+      const isBalanced = Math.abs(entry.difference) <= 0.01;
+
+      if (!hasUnmatchedRows && isBalanced) {
+        entry.reconciliationStatus = "matched";
+        entry.hasMismatch = false;
+      } else if (hasUnmatchedRows && isBalanced) {
+        // Totals balance out (catch-up payments accounted for)
+        entry.reconciliationStatus = "balanced";
+        entry.hasMismatch = false;
+      } else {
+        entry.reconciliationStatus = "mismatch";
+        entry.hasMismatch = true;
+      }
     }
 
     return Array.from(map.values());
@@ -288,9 +300,11 @@ export default function Dashboard() {
 
     // Filter by status
     if (statusFilter === "mismatch") {
-      result = result.filter((s) => s.hasMismatch);
+      result = result.filter((s) => s.reconciliationStatus === "mismatch");
     } else if (statusFilter === "matched") {
-      result = result.filter((s) => !s.hasMismatch);
+      result = result.filter((s) => s.reconciliationStatus === "matched");
+    } else if (statusFilter === "balanced") {
+      result = result.filter((s) => s.reconciliationStatus === "balanced");
     }
 
     // Sort
@@ -322,7 +336,9 @@ export default function Dashboard() {
   const totalSubmissions = tempoSubmissions.length;
   const totalRewards = emailSummaries.reduce((sum, s) => sum + s.rewardCount, 0);
   const totalRewardAmount = emailSummaries.reduce((sum, s) => sum + s.rewardTotal, 0);
-  const mismatchCount = emailSummaries.filter((s) => s.hasMismatch).length;
+  const mismatchCount = emailSummaries.filter((s) => s.reconciliationStatus === "mismatch").length;
+  const balancedCount = emailSummaries.filter((s) => s.reconciliationStatus === "balanced").length;
+  const matchedCount = emailSummaries.filter((s) => s.reconciliationStatus === "matched").length;
 
   const toggleExpand = (email: string) => {
     setExpandedEmails((prev) => {
@@ -438,14 +454,15 @@ export default function Dashboard() {
                   className="pl-9"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "mismatch" | "matched")}>
-                <SelectTrigger className="w-[160px]">
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "mismatch" | "matched" | "balanced")}>
+                <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All ({emailSummaries.length})</SelectItem>
                   <SelectItem value="mismatch">Mismatch ({mismatchCount})</SelectItem>
-                  <SelectItem value="matched">Matched ({emailSummaries.length - mismatchCount})</SelectItem>
+                  <SelectItem value="balanced">Balanced ({balancedCount})</SelectItem>
+                  <SelectItem value="matched">Matched ({matchedCount})</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -503,8 +520,10 @@ export default function Dashboard() {
                                 {summary.difference > 0 ? "+" : ""}${summary.difference.toFixed(2)}
                               </TableCell>
                               <TableCell>
-                                {summary.hasMismatch ? (
+                                {summary.reconciliationStatus === "mismatch" ? (
                                   <Badge variant="destructive">Mismatch</Badge>
+                                ) : summary.reconciliationStatus === "balanced" ? (
+                                  <Badge className="bg-amber-500 text-white border-transparent">Balanced</Badge>
                                 ) : (
                                   <Badge className="bg-green-600 text-white border-transparent">Matched</Badge>
                                 )}
