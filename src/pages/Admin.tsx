@@ -528,16 +528,27 @@ export default function Admin() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sendosoRecords.map((record) => (
-                        <TableRow key={record.id}>
-                          <TableCell>{record.technician_email}</TableCell>
-                          <TableCell>{record.technician_name}</TableCell>
-                          <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
-                          <TableCell>{format(new Date(record.fulfillment_date), "MMM d, yyyy")}</TableCell>
-                          <TableCell>
-                            <Badge variant="default">{record.status}</Badge>
-                          </TableCell>
-                        </TableRow>
+                      {sendosoRecords.map((record) => {
+                        const getStatusStyles = (status: string) => {
+                          const s = status.toLowerCase();
+                          if (s === "used") return "bg-green-600 text-white border-transparent";
+                          if (s === "sent") return "bg-sky-400 text-white border-transparent";
+                          if (s === "clicked") return "bg-blue-700 text-white border-transparent";
+                          if (s === "expired" || s === "credited") return "bg-amber-500 text-white border-transparent";
+                          return "";
+                        };
+                        return (
+                          <TableRow key={record.id}>
+                            <TableCell>{record.technician_email}</TableCell>
+                            <TableCell>{record.technician_name}</TableCell>
+                            <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
+                            <TableCell>{format(new Date(record.fulfillment_date), "MMM d, yyyy")}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusStyles(record.status)}>{record.status}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
                       ))}
                     </TableBody>
                   </Table>
