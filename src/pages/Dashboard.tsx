@@ -520,8 +520,10 @@ export default function Dashboard() {
                                 {summary.difference > 0 ? "+" : ""}${summary.difference.toFixed(2)}
                               </TableCell>
                               <TableCell>
-                                {summary.hasMismatch ? (
+                                {summary.reconciliationStatus === "mismatch" ? (
                                   <Badge variant="destructive">Mismatch</Badge>
+                                ) : summary.reconciliationStatus === "balanced" ? (
+                                  <Badge className="bg-amber-500 text-white border-transparent">Balanced</Badge>
                                 ) : (
                                   <Badge className="bg-green-600 text-white border-transparent">Matched</Badge>
                                 )}
