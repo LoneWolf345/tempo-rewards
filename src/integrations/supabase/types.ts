@@ -53,6 +53,7 @@ export type Database = {
           status: string
           technician_email: string
           technician_name: string | null
+          transaction_id: string | null
           uploaded_at: string
           uploaded_by: string
         }
@@ -64,6 +65,7 @@ export type Database = {
           status?: string
           technician_email: string
           technician_name?: string | null
+          transaction_id?: string | null
           uploaded_at?: string
           uploaded_by: string
         }
@@ -75,6 +77,7 @@ export type Database = {
           status?: string
           technician_email?: string
           technician_name?: string | null
+          transaction_id?: string | null
           uploaded_at?: string
           uploaded_by?: string
         }
