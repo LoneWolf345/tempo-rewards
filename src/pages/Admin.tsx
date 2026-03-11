@@ -252,6 +252,7 @@ export default function Admin() {
       const dateIdx = headers.findIndex((h) => h.includes("created_at") || h.includes("date"));
       const amountIdx = headers.findIndex((h) => h.includes("egift_price") || h.includes("amount"));
       const expiryIdx = headers.findIndex((h) => h.includes("expiry_date") || h.includes("expiry") || h.includes("expires"));
+      const txnIdIdx = headers.findIndex((h) => h === "transaction_id");
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
         toast.error("CSV must contain recipient_email, egift_price, and created_at columns");
@@ -283,6 +284,7 @@ export default function Admin() {
           fulfillment_date: dateValue,
           status: statusIdx >= 0 ? values[statusIdx] : "fulfilled",
           expiry_date: expiryValue,
+          transaction_id: txnIdIdx >= 0 && values[txnIdIdx] ? values[txnIdIdx] : null,
         });
       }
 
