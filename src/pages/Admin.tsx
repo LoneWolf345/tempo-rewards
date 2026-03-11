@@ -698,6 +698,7 @@ export default function Admin() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead>Txn ID</TableHead>
                           <TableHead>Email</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead>Amount</TableHead>
@@ -709,6 +710,7 @@ export default function Admin() {
                       <TableBody>
                         {sendosoRecords.map((record) => (
                           <TableRow key={record.id}>
+                            <TableCell className="font-mono text-xs text-muted-foreground">{record.transaction_id || "—"}</TableCell>
                             <TableCell>{record.technician_email}</TableCell>
                             <TableCell>{record.technician_name}</TableCell>
                             <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
