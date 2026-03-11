@@ -46,6 +46,7 @@ interface SendosoRecord {
   status: string;
   uploaded_at: string;
   expiry_date: string | null;
+  transaction_id: string | null;
 }
 
 export default function Admin() {

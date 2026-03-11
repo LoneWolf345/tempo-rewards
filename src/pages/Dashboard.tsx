@@ -30,6 +30,7 @@ interface SendosoRecord {
   fulfillment_date: string;
   status: string;
   expiry_date: string | null;
+  transaction_id: string | null;
 }
 
 interface RewardRecord {
