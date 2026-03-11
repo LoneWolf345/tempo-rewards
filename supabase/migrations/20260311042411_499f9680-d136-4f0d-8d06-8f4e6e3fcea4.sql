@@ -1,0 +1,1 @@
+ALTER TABLE public.sendoso_records ADD COLUMN transaction_id text UNIQUE;

@@ -46,6 +46,7 @@ interface SendosoRecord {
   status: string;
   uploaded_at: string;
   expiry_date: string | null;
+  transaction_id: string | null;
 }
 
 export default function Admin() {
@@ -251,6 +252,7 @@ export default function Admin() {
       const dateIdx = headers.findIndex((h) => h.includes("created_at") || h.includes("date"));
       const amountIdx = headers.findIndex((h) => h.includes("egift_price") || h.includes("amount"));
       const expiryIdx = headers.findIndex((h) => h.includes("expiry_date") || h.includes("expiry") || h.includes("expires"));
+      const txnIdIdx = headers.findIndex((h) => h === "transaction_id");
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
         toast.error("CSV must contain recipient_email, egift_price, and created_at columns");
@@ -282,6 +284,7 @@ export default function Admin() {
           fulfillment_date: dateValue,
           status: statusIdx >= 0 ? values[statusIdx] : "fulfilled",
           expiry_date: expiryValue,
+          transaction_id: txnIdIdx >= 0 && values[txnIdIdx] ? values[txnIdIdx] : null,
         });
       }
 
@@ -301,11 +304,15 @@ export default function Admin() {
         from += pageSize;
       }
 
-      // Build lookup map: key = email_lower|date|amount
-      const existingMap = new Map<string, SendosoRecord>();
+      // Build lookup maps: one by transaction_id, one by composite key
+      const existingByTxnId = new Map<string, SendosoRecord>();
+      const existingByComposite = new Map<string, SendosoRecord>();
       for (const rec of allExisting) {
+        if (rec.transaction_id) {
+          existingByTxnId.set(rec.transaction_id, rec);
+        }
         const key = `${rec.technician_email.toLowerCase()}|${rec.fulfillment_date}|${Number(rec.reward_amount)}`;
-        existingMap.set(key, rec);
+        existingByComposite.set(key, rec);
       }
 
       // Separate into inserts and updates
@@ -317,17 +324,28 @@ export default function Admin() {
         status: string;
         uploaded_by: string;
         expiry_date: string | null;
+        transaction_id: string | null;
       }> = [];
-      const toUpdate: Array<{ id: string; status: string; expiry_date: string | null }> = [];
+      const toUpdate: Array<{ id: string; status: string; expiry_date: string | null; transaction_id: string | null }> = [];
 
       for (const row of csvRows) {
-        const key = `${row.technician_email.toLowerCase()}|${row.fulfillment_date}|${row.reward_amount}`;
-        const existing = existingMap.get(key);
+        // Tier 1: match by transaction_id if present
+        let existing: SendosoRecord | undefined;
+        if (row.transaction_id) {
+          existing = existingByTxnId.get(row.transaction_id);
+        }
+        // Tier 2: fallback to composite key
+        if (!existing) {
+          const key = `${row.technician_email.toLowerCase()}|${row.fulfillment_date}|${row.reward_amount}`;
+          existing = existingByComposite.get(key);
+        }
+
         if (existing) {
           toUpdate.push({
             id: existing.id,
             status: row.status,
             expiry_date: row.expiry_date,
+            transaction_id: row.transaction_id || existing.transaction_id,
           });
         } else {
           toInsert.push({
@@ -338,6 +356,7 @@ export default function Admin() {
             status: row.status,
             uploaded_by: user.id,
             expiry_date: row.expiry_date,
+            transaction_id: row.transaction_id,
           });
         }
       }
@@ -354,7 +373,7 @@ export default function Admin() {
       for (const upd of toUpdate) {
         const { error } = await supabase
           .from("sendoso_records")
-          .update({ status: upd.status, expiry_date: upd.expiry_date })
+          .update({ status: upd.status, expiry_date: upd.expiry_date, transaction_id: upd.transaction_id })
           .eq("id", upd.id);
         if (error) throw error;
       }
@@ -499,7 +518,7 @@ export default function Admin() {
                     2. Upload Sendoso CSV
                   </CardTitle>
                   <CardDescription>
-                    Upload gift card fulfillment records from Sendoso. Required columns: recipient_email, egift_price, created_at. Optional: status, expiry_date. New records are added; existing matches (email + date + amount) are updated.
+                    Upload gift card fulfillment records from Sendoso. Required columns: recipient_email, egift_price, created_at. Optional: status, expiry_date, transaction_id. New records are added; existing matches (by transaction_id or email + date + amount) are updated.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -679,6 +698,7 @@ export default function Admin() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead>Txn ID</TableHead>
                           <TableHead>Email</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead>Amount</TableHead>
@@ -690,6 +710,7 @@ export default function Admin() {
                       <TableBody>
                         {sendosoRecords.map((record) => (
                           <TableRow key={record.id}>
+                            <TableCell className="font-mono text-xs text-muted-foreground">{record.transaction_id || "—"}</TableCell>
                             <TableCell>{record.technician_email}</TableCell>
                             <TableCell>{record.technician_name}</TableCell>
                             <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
