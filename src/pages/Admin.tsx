@@ -304,11 +304,15 @@ export default function Admin() {
         from += pageSize;
       }
 
-      // Build lookup map: key = email_lower|date|amount
-      const existingMap = new Map<string, SendosoRecord>();
+      // Build lookup maps: one by transaction_id, one by composite key
+      const existingByTxnId = new Map<string, SendosoRecord>();
+      const existingByComposite = new Map<string, SendosoRecord>();
       for (const rec of allExisting) {
+        if (rec.transaction_id) {
+          existingByTxnId.set(rec.transaction_id, rec);
+        }
         const key = `${rec.technician_email.toLowerCase()}|${rec.fulfillment_date}|${Number(rec.reward_amount)}`;
-        existingMap.set(key, rec);
+        existingByComposite.set(key, rec);
       }
 
       // Separate into inserts and updates
@@ -320,17 +324,28 @@ export default function Admin() {
         status: string;
         uploaded_by: string;
         expiry_date: string | null;
+        transaction_id: string | null;
       }> = [];
-      const toUpdate: Array<{ id: string; status: string; expiry_date: string | null }> = [];
+      const toUpdate: Array<{ id: string; status: string; expiry_date: string | null; transaction_id: string | null }> = [];
 
       for (const row of csvRows) {
-        const key = `${row.technician_email.toLowerCase()}|${row.fulfillment_date}|${row.reward_amount}`;
-        const existing = existingMap.get(key);
+        // Tier 1: match by transaction_id if present
+        let existing: SendosoRecord | undefined;
+        if (row.transaction_id) {
+          existing = existingByTxnId.get(row.transaction_id);
+        }
+        // Tier 2: fallback to composite key
+        if (!existing) {
+          const key = `${row.technician_email.toLowerCase()}|${row.fulfillment_date}|${row.reward_amount}`;
+          existing = existingByComposite.get(key);
+        }
+
         if (existing) {
           toUpdate.push({
             id: existing.id,
             status: row.status,
             expiry_date: row.expiry_date,
+            transaction_id: row.transaction_id || existing.transaction_id,
           });
         } else {
           toInsert.push({
@@ -341,6 +356,7 @@ export default function Admin() {
             status: row.status,
             uploaded_by: user.id,
             expiry_date: row.expiry_date,
+            transaction_id: row.transaction_id,
           });
         }
       }
@@ -357,7 +373,7 @@ export default function Admin() {
       for (const upd of toUpdate) {
         const { error } = await supabase
           .from("sendoso_records")
-          .update({ status: upd.status, expiry_date: upd.expiry_date })
+          .update({ status: upd.status, expiry_date: upd.expiry_date, transaction_id: upd.transaction_id })
           .eq("id", upd.id);
         if (error) throw error;
       }
