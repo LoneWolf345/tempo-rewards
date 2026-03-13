@@ -25,6 +25,37 @@ const extractDate = (dateStr: string): string => {
   return dateStr.includes(" ") ? dateStr.split(" ")[0] : dateStr;
 };
 
+// Proper CSV line parser that handles quoted fields with commas inside
+const parseCSVLine = (line: string, delimiter: string = ","): string[] => {
+  const fields: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === delimiter) {
+        fields.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+};
+
 interface Profile {
   id: string;
   user_id: string;
