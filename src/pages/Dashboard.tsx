@@ -353,11 +353,25 @@ export default function Dashboard() {
   }, [emailSummaries, searchQuery, statusFilter, sortColumn, sortDirection, isEmulating, emulatedEmail]);
 
   const displaySummaries = isEmulating ? filteredAndSortedSummaries : filteredAndSortedSummaries;
-  const totalSubmissions = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.tempoCount, 0);
-  const totalRewards = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.rewardCount, 0);
-  const totalRewardAmount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.rewardTotal, 0);
-  const mismatchCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "mismatch").length;
-  const balancedCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "balanced").length;
+  const activeSummaries = isEmulating ? filteredAndSortedSummaries : emailSummaries;
+  const totalTempoValue = activeSummaries.reduce((sum, s) => sum + s.tempoTotal, 0);
+  const totalSendosoValue = activeSummaries.reduce((sum, s) => sum + s.rewardTotal, 0);
+  const pendingValue = totalTempoValue - totalSendosoValue;
+  const mismatchCount = activeSummaries.filter((s) => s.reconciliationStatus === "mismatch").length;
+  const balancedCount = activeSummaries.filter((s) => s.reconciliationStatus === "balanced").length;
+
+  // Collect TeMPO emails for filtering Sendoso status counts
+  const tempoEmailSet = useMemo(() => new Set(tempoSubmissions.map(t => t.technician_email.toLowerCase())), [tempoSubmissions]);
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { sent: 0, clicked: 0, opened: 0, used: 0, "expired/credited": 0 };
+    for (const s of sendosoRecords) {
+      if (!tempoEmailSet.has(s.technician_email.toLowerCase())) continue;
+      const st = s.status.toLowerCase();
+      if (st === "expired" || st === "credited") counts["expired/credited"]++;
+      else if (st in counts) counts[st]++;
+    }
+    return counts;
+  }, [sendosoRecords, tempoEmailSet]);
   const tempoLastUpdated = useMemo(() => {
     if (tempoSubmissions.length === 0) return null;
     return tempoSubmissions.reduce((max, t) => {
@@ -448,50 +462,58 @@ export default function Dashboard() {
 
       <main className="container mx-auto px-4 py-8">
         {/* Summary Cards */}
-        <div className="mb-8 grid gap-4 md:grid-cols-4">
+        <div className="mb-4 grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Submissions</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalSubmissions}</div>
-              <p className="text-xs text-muted-foreground">TeMPO upsells submitted</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Rewards Received</CardTitle>
-              <Gift className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalRewards}</div>
-              <p className="text-xs text-muted-foreground">Sendoso + TeMPO rewards</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Email Mismatches</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">{mismatchCount}</div>
-              <p className="text-xs text-muted-foreground">Emails with discrepancies</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Reward Value</CardTitle>
+              <CardTitle className="text-sm font-medium">Earned Rewards</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${totalRewardAmount.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">Rewards received</p>
+              <div className="text-2xl font-bold">${totalTempoValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <p className="text-xs text-muted-foreground">Total TeMPO upsell value</p>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Rewards Sent</CardTitle>
+              <Gift className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${totalSendosoValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <p className="text-xs text-muted-foreground">Total Sendoso reward value</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Pending Rewards</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${pendingValue > 0.01 ? "text-amber-500" : ""}`}>${pendingValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <p className="text-xs text-muted-foreground">Earned minus sent</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Status Pipeline */}
+        <div className="mb-8 flex flex-wrap items-center gap-2">
+          {(["sent", "clicked", "opened", "used"] as const).map((status, i) => (
+            <div key={status} className="flex items-center gap-2">
+              {i > 0 && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+              <div className={`rounded-lg border px-4 py-3 text-center min-w-[100px] ${getStatusStyles(status)}`}>
+                <div className="text-xs font-medium capitalize">{status}</div>
+                <div className="text-xl font-bold">{statusCounts[status]}</div>
+              </div>
+            </div>
+          ))}
+          <div className="ml-4 flex items-center gap-2">
+            <div className={`rounded-lg border px-4 py-3 text-center min-w-[100px] ${getStatusStyles("expired")}`}>
+              <div className="text-xs font-medium">Expired/Credited</div>
+              <div className="text-xl font-bold">{statusCounts["expired/credited"]}</div>
+            </div>
+          </div>
         </div>
 
         {/* Technician Summary Table */}
