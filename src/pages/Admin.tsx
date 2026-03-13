@@ -226,11 +226,11 @@ export default function Admin() {
       // Detect delimiter (tab or comma)
       const firstLine = lines[0];
       const delimiter = firstLine.includes("\t") ? "\t" : ",";
-      const headers = firstLine.split(delimiter).map((h) => h.trim().toLowerCase().replace(/"/g, ""));
+      const headers = parseCSVLine(firstLine, delimiter).map((h) => h.toLowerCase());
 
       console.log("[TeMPO Upload] Detected delimiter:", delimiter === "\t" ? "TAB" : "COMMA");
       console.log("[TeMPO Upload] Headers found:", headers);
-      console.log("[TeMPO Upload] First data row:", lines[1]?.split(delimiter).map((v) => v.trim().replace(/"/g, "")));
+      console.log("[TeMPO Upload] First data row:", parseCSVLine(lines[1], delimiter));
 
       const idIdx = headers.findIndex((h) => h === "id");
       const emailIdx = headers.findIndex((h) => h.includes("issued_to_email") || h.includes("email"));
