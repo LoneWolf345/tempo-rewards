@@ -514,9 +514,10 @@ export default function Dashboard() {
             </div>
           ))}
           <div className="ml-4 flex items-center gap-2">
-            <div className={`rounded-lg border px-4 py-3 text-center min-w-[100px] ${getStatusStyles("expired")}`}>
+            <div className={`rounded-lg border px-4 py-3 text-center min-w-[110px] ${getStatusStyles("expired")}`}>
               <div className="text-xs font-medium">Expired/Credited</div>
-              <div className="text-xl font-bold">{statusCounts["expired/credited"]}</div>
+              <div className="text-xl font-bold">{statusCounts["expired/credited"].count}</div>
+              <div className="text-xs opacity-80">${statusCounts["expired/credited"].amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             </div>
           </div>
         </div>
