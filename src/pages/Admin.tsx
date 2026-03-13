@@ -188,6 +188,7 @@ export default function Admin() {
       const lines = text.split("\n").filter((line) => line.trim());
       const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
 
+      const idIdx = headers.findIndex((h) => h === "id");
       const emailIdx = headers.findIndex((h) => h.includes("issued_to_email") || h.includes("email"));
       const amountIdx = headers.findIndex((h) => h === "amount" || h.includes("amount"));
       const dateIdx = headers.findIndex((h) => h.includes("issued_at") || h.includes("date"));
