@@ -363,12 +363,16 @@ export default function Dashboard() {
   // Collect TeMPO emails for filtering Sendoso status counts
   const tempoEmailSet = useMemo(() => new Set(tempoSubmissions.map(t => t.technician_email.toLowerCase())), [tempoSubmissions]);
   const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = { sent: 0, clicked: 0, opened: 0, used: 0, "expired/credited": 0 };
+    const counts: Record<string, { count: number; amount: number }> = {
+      sent: { count: 0, amount: 0 }, clicked: { count: 0, amount: 0 }, opened: { count: 0, amount: 0 },
+      used: { count: 0, amount: 0 }, "expired/credited": { count: 0, amount: 0 },
+    };
     for (const s of sendosoRecords) {
       if (!tempoEmailSet.has(s.technician_email.toLowerCase())) continue;
       const st = s.status.toLowerCase();
-      if (st === "expired" || st === "credited") counts["expired/credited"]++;
-      else if (st in counts) counts[st]++;
+      const amt = Number(s.reward_amount);
+      if (st === "expired" || st === "credited") { counts["expired/credited"].count++; counts["expired/credited"].amount += amt; }
+      else if (st in counts) { counts[st].count++; counts[st].amount += amt; }
     }
     return counts;
   }, [sendosoRecords, tempoEmailSet]);
@@ -502,16 +506,18 @@ export default function Dashboard() {
           {(["sent", "clicked", "opened", "used"] as const).map((status, i) => (
             <div key={status} className="flex items-center gap-2">
               {i > 0 && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
-              <div className={`rounded-lg border px-4 py-3 text-center min-w-[100px] ${getStatusStyles(status)}`}>
+              <div className={`rounded-lg border px-4 py-3 text-center min-w-[110px] ${getStatusStyles(status)}`}>
                 <div className="text-xs font-medium capitalize">{status}</div>
-                <div className="text-xl font-bold">{statusCounts[status]}</div>
+                <div className="text-xl font-bold">{statusCounts[status].count}</div>
+                <div className="text-xs opacity-80">${statusCounts[status].amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               </div>
             </div>
           ))}
           <div className="ml-4 flex items-center gap-2">
-            <div className={`rounded-lg border px-4 py-3 text-center min-w-[100px] ${getStatusStyles("expired")}`}>
+            <div className={`rounded-lg border px-4 py-3 text-center min-w-[110px] ${getStatusStyles("expired")}`}>
               <div className="text-xs font-medium">Expired/Credited</div>
-              <div className="text-xl font-bold">{statusCounts["expired/credited"]}</div>
+              <div className="text-xl font-bold">{statusCounts["expired/credited"].count}</div>
+              <div className="text-xs opacity-80">${statusCounts["expired/credited"].amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             </div>
           </div>
         </div>
