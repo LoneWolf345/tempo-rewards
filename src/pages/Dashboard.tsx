@@ -10,8 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { LogOut, FileText, Gift, AlertTriangle, DollarSign, ChevronDown, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Search, Check, Clock, HelpCircle } from "lucide-react";
-import { format } from "date-fns";
+import { LogOut, FileText, Gift, AlertTriangle, DollarSign, ChevronDown, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Search, Check, Clock, HelpCircle, Info } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 
 interface TempoSubmission {
@@ -22,6 +22,7 @@ interface TempoSubmission {
   submission_date: string;
   status: string;
   gift_card_code: string | null;
+  uploaded_at: string;
 }
 
 interface SendosoRecord {
@@ -33,6 +34,7 @@ interface SendosoRecord {
   status: string;
   expiry_date: string | null;
   transaction_id: string | null;
+  uploaded_at: string;
 }
 
 interface RewardRecord {
@@ -356,6 +358,22 @@ export default function Dashboard() {
   const totalRewardAmount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.rewardTotal, 0);
   const mismatchCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "mismatch").length;
   const balancedCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "balanced").length;
+  const tempoLastUpdated = useMemo(() => {
+    if (tempoSubmissions.length === 0) return null;
+    return tempoSubmissions.reduce((max, t) => {
+      const d = new Date(t.uploaded_at).getTime();
+      return d > max ? d : max;
+    }, 0);
+  }, [tempoSubmissions]);
+
+  const sendosoLastUpdated = useMemo(() => {
+    if (sendosoRecords.length === 0) return null;
+    return sendosoRecords.reduce((max, s) => {
+      const d = new Date(s.uploaded_at).getTime();
+      return d > max ? d : max;
+    }, 0);
+  }, [sendosoRecords]);
+
   const matchedCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "matched").length;
 
   const toggleExpand = (email: string) => {
@@ -415,6 +433,18 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
+
+      {/* Data Freshness Banner */}
+      <div className="border-b bg-muted/50">
+        <div className="container mx-auto flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground">
+          <Info className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            Data is refreshed approximately once per week.
+            {" · "}TeMPO data: {tempoLastUpdated ? `updated ${formatDistanceToNow(new Date(tempoLastUpdated), { addSuffix: true })}` : "No data"}
+            {" · "}Sendoso data: {sendosoLastUpdated ? `updated ${formatDistanceToNow(new Date(sendosoLastUpdated), { addSuffix: true })}` : "No data"}
+          </span>
+        </div>
+      </div>
 
       <main className="container mx-auto px-4 py-8">
         {/* Summary Cards */}
