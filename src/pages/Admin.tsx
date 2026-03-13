@@ -737,8 +737,27 @@ export default function Admin() {
                     1. Upload TeMPO CSV
                   </CardTitle>
                   <CardDescription>
-                    Upload gift card records from TeMPO. Required columns: issued_to_email, amount, issued_at. Optional: status
+                    Upload gift card records from TeMPO.
                   </CardDescription>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const csv = "id,issued_to_email,amount,issued_at,status\n";
+                      const blob = new Blob([csv], { type: "text/csv" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "tempo_template.csv";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <Download className="mr-1 h-3 w-3" />
+                    Download template
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div
