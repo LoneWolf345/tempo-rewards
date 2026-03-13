@@ -309,10 +309,7 @@ export default function Admin() {
         const values = lines[i].split(delimiter).map((v) => v.trim().replace(/"/g, ""));
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
 
-        let dateValue = values[dateIdx];
-        if (dateValue.includes(" ")) {
-          dateValue = dateValue.split(" ")[0];
-        }
+        const dateValue = extractDate(values[dateIdx]);
 
         if (!isValidDate(dateValue)) {
           skippedRows.push(`Row ${i + 1}: invalid date "${values[dateIdx]}"`);
@@ -321,10 +318,7 @@ export default function Admin() {
 
         let expiryValue: string | null = null;
         if (expiryIdx >= 0 && values[expiryIdx]) {
-          expiryValue = values[expiryIdx];
-          if (expiryValue.includes(" ")) {
-            expiryValue = expiryValue.split(" ")[0];
-          }
+          expiryValue = extractDate(values[expiryIdx]);
           if (!isValidDate(expiryValue)) {
             skippedRows.push(`Row ${i + 1}: invalid expiry date "${values[expiryIdx]}"`);
             continue;
