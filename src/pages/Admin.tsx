@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -139,6 +139,7 @@ export default function Admin() {
   // Upload history state
   const [uploadHistory, setUploadHistory] = useState<UploadHistoryRecord[]>([]);
   const [uploadHistoryLoading, setUploadHistoryLoading] = useState(false);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
 
   const PAGE_SIZE = 100;
 
@@ -1083,29 +1084,45 @@ export default function Admin() {
                     </TableHeader>
                     <TableBody>
                       {uploadHistory.map((record) => (
-                        <TableRow key={record.id}>
-                          <TableCell className="whitespace-nowrap">
-                            {format(new Date(record.created_at), "MMM d, yyyy h:mm a")}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={record.upload_type === "tempo" ? "default" : "secondary"}>
-                              {record.upload_type === "tempo" ? "TeMPO" : "Sendoso"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-[200px] truncate text-sm">{record.file_name}</TableCell>
-                          <TableCell className="text-sm">{record.uploaded_by_email}</TableCell>
-                          <TableCell>{record.total_rows_in_file}</TableCell>
-                          <TableCell className="text-green-600 dark:text-green-400">{record.records_inserted}</TableCell>
-                          <TableCell className="text-blue-600 dark:text-blue-400">{record.records_updated}</TableCell>
-                          <TableCell className={record.records_skipped > 0 ? "text-amber-600 dark:text-amber-400" : ""}>{record.records_skipped}</TableCell>
-                          <TableCell>
-                            {record.error_message ? (
-                              <Badge variant="destructive">Error</Badge>
-                            ) : (
-                              <Badge className="bg-green-600 hover:bg-green-700">Success</Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
+                        <React.Fragment key={record.id}>
+                          <TableRow
+                            className={record.error_message ? "cursor-pointer hover:bg-muted/50" : ""}
+                            onClick={() => {
+                              if (record.error_message) {
+                                setExpandedHistoryId(expandedHistoryId === record.id ? null : record.id);
+                              }
+                            }}
+                          >
+                            <TableCell className="whitespace-nowrap">
+                              {format(new Date(record.created_at), "MMM d, yyyy h:mm a")}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={record.upload_type === "tempo" ? "default" : "secondary"}>
+                                {record.upload_type === "tempo" ? "TeMPO" : "Sendoso"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="max-w-[200px] truncate text-sm">{record.file_name}</TableCell>
+                            <TableCell className="text-sm">{record.uploaded_by_email}</TableCell>
+                            <TableCell>{record.total_rows_in_file}</TableCell>
+                            <TableCell className="text-green-600 dark:text-green-400">{record.records_inserted}</TableCell>
+                            <TableCell className="text-blue-600 dark:text-blue-400">{record.records_updated}</TableCell>
+                            <TableCell className={record.records_skipped > 0 ? "text-amber-600 dark:text-amber-400" : ""}>{record.records_skipped}</TableCell>
+                            <TableCell>
+                              {record.error_message ? (
+                                <Badge variant="destructive">Error ▾</Badge>
+                              ) : (
+                                <Badge className="bg-green-600 hover:bg-green-700">Success</Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                          {expandedHistoryId === record.id && record.error_message && (
+                            <TableRow>
+                              <TableCell colSpan={9} className="bg-destructive/5 border-l-4 border-destructive p-4">
+                                <pre className="whitespace-pre-wrap text-sm text-destructive">{record.error_message}</pre>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
                       ))}
                     </TableBody>
                   </Table>
