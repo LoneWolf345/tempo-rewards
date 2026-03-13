@@ -571,6 +571,16 @@ export default function Admin() {
                       disabled={isUploading}
                     />
                   </div>
+                  {tempoUploadError && (
+                    <div className="rounded-md border border-destructive bg-destructive/10 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <pre className="whitespace-pre-wrap text-sm text-destructive flex-1">{tempoUploadError}</pre>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setTempoUploadError(null)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
