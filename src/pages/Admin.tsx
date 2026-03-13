@@ -501,8 +501,15 @@ export default function Admin() {
       setSendosoUploadError(`Failed to upload Sendoso CSV: ${msg}`);
     } finally {
       setIsUploading(false);
-      e.target.value = "";
     }
+  };
+
+  const handleSendosoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleSendosoUpload(file);
+    }
+    e.target.value = "";
   };
 
   const toggleUserActive = async (profile: Profile) => {
