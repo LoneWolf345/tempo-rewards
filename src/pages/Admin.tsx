@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
+import { useEmulation } from "@/contexts/EmulationContext";
 
 interface Profile {
   id: string;
@@ -52,6 +53,7 @@ interface SendosoRecord {
 export default function Admin() {
   const { isAdmin, isLoading: authLoading, user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { startEmulation } = useEmulation();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -577,6 +579,17 @@ export default function Admin() {
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    startEmulation(profile.email);
+                                    navigate("/dashboard");
+                                  }}
+                                >
+                                  <Eye className="mr-1 h-3 w-3" />
+                                  View As
+                                </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"

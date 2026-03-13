@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEmulation } from "@/contexts/EmulationContext";
+import { EmulationBanner } from "@/components/EmulationBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,6 +67,8 @@ interface EmailSummary {
 
 export default function Dashboard() {
   const { profile, signOut, isAdmin } = useAuth();
+  const { emulatedEmail } = useEmulation();
+  const isEmulating = isAdmin && !!emulatedEmail;
   const [tempoSubmissions, setTempoSubmissions] = useState<TempoSubmission[]>([]);
   const [sendosoRecords, setSendosoRecords] = useState<SendosoRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,6 +81,13 @@ export default function Dashboard() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Auto-expand the emulated user's row
+  useEffect(() => {
+    if (isEmulating && emulatedEmail) {
+      setExpandedEmails(new Set([emulatedEmail]));
+    }
+  }, [isEmulating, emulatedEmail]);
 
   const fetchAllRows = async <T,>(
     table: "tempo_submissions" | "sendoso_records",
@@ -293,6 +304,11 @@ export default function Dashboard() {
   const filteredAndSortedSummaries = useMemo(() => {
     let result = emailSummaries;
 
+    // When emulating, show only the emulated user
+    if (isEmulating && emulatedEmail) {
+      result = result.filter((s) => s.email === emulatedEmail);
+    }
+
     // Filter by search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -332,14 +348,15 @@ export default function Dashboard() {
     }
 
     return result;
-  }, [emailSummaries, searchQuery, statusFilter, sortColumn, sortDirection]);
+  }, [emailSummaries, searchQuery, statusFilter, sortColumn, sortDirection, isEmulating, emulatedEmail]);
 
-  const totalSubmissions = tempoSubmissions.length;
-  const totalRewards = emailSummaries.reduce((sum, s) => sum + s.rewardCount, 0);
-  const totalRewardAmount = emailSummaries.reduce((sum, s) => sum + s.rewardTotal, 0);
-  const mismatchCount = emailSummaries.filter((s) => s.reconciliationStatus === "mismatch").length;
-  const balancedCount = emailSummaries.filter((s) => s.reconciliationStatus === "balanced").length;
-  const matchedCount = emailSummaries.filter((s) => s.reconciliationStatus === "matched").length;
+  const displaySummaries = isEmulating ? filteredAndSortedSummaries : filteredAndSortedSummaries;
+  const totalSubmissions = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.tempoCount, 0);
+  const totalRewards = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.rewardCount, 0);
+  const totalRewardAmount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.rewardTotal, 0);
+  const mismatchCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "mismatch").length;
+  const balancedCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "balanced").length;
+  const matchedCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "matched").length;
 
   const toggleExpand = (email: string) => {
     setExpandedEmails((prev) => {
@@ -367,25 +384,34 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
+      <EmulationBanner />
       <header className="border-b bg-card">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <div>
             <h1 className="text-xl font-bold">TeMPO Rewards Tracker</h1>
             <p className="text-sm text-muted-foreground">
-              Welcome, {profile?.full_name || profile?.email}
-              {isAdmin && <Badge variant="secondary" className="ml-2">Admin</Badge>}
+              {isEmulating ? (
+                <>Viewing as <strong>{emulatedEmail}</strong></>
+              ) : (
+                <>
+                  Welcome, {profile?.full_name || profile?.email}
+                  {isAdmin && <Badge variant="secondary" className="ml-2">Admin</Badge>}
+                </>
+              )}
             </p>
           </div>
           <div className="flex gap-2">
-            {isAdmin && (
+            {isAdmin && !isEmulating && (
               <Button variant="outline" asChild>
                 <a href="/admin">Admin Panel</a>
               </Button>
             )}
-            <Button variant="ghost" onClick={signOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </Button>
+            {!isEmulating && (
+              <Button variant="ghost" onClick={signOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </Button>
+            )}
           </div>
         </div>
       </header>
