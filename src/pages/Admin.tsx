@@ -181,6 +181,7 @@ export default function Admin() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    setTempoUploadError(null);
     setIsUploading(true);
     try {
       const text = await file.text();
