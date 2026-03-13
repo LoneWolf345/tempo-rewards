@@ -353,11 +353,25 @@ export default function Dashboard() {
   }, [emailSummaries, searchQuery, statusFilter, sortColumn, sortDirection, isEmulating, emulatedEmail]);
 
   const displaySummaries = isEmulating ? filteredAndSortedSummaries : filteredAndSortedSummaries;
-  const totalSubmissions = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.tempoCount, 0);
-  const totalRewards = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.rewardCount, 0);
-  const totalRewardAmount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.rewardTotal, 0);
-  const mismatchCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "mismatch").length;
-  const balancedCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "balanced").length;
+  const activeSummaries = isEmulating ? filteredAndSortedSummaries : emailSummaries;
+  const totalTempoValue = activeSummaries.reduce((sum, s) => sum + s.tempoTotal, 0);
+  const totalSendosoValue = activeSummaries.reduce((sum, s) => sum + s.rewardTotal, 0);
+  const pendingValue = totalTempoValue - totalSendosoValue;
+  const mismatchCount = activeSummaries.filter((s) => s.reconciliationStatus === "mismatch").length;
+  const balancedCount = activeSummaries.filter((s) => s.reconciliationStatus === "balanced").length;
+
+  // Collect TeMPO emails for filtering Sendoso status counts
+  const tempoEmailSet = useMemo(() => new Set(tempoSubmissions.map(t => t.technician_email.toLowerCase())), [tempoSubmissions]);
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { sent: 0, clicked: 0, opened: 0, used: 0, "expired/credited": 0 };
+    for (const s of sendosoRecords) {
+      if (!tempoEmailSet.has(s.technician_email.toLowerCase())) continue;
+      const st = s.status.toLowerCase();
+      if (st === "expired" || st === "credited") counts["expired/credited"]++;
+      else if (st in counts) counts[st]++;
+    }
+    return counts;
+  }, [sendosoRecords, tempoEmailSet]);
   const tempoLastUpdated = useMemo(() => {
     if (tempoSubmissions.length === 0) return null;
     return tempoSubmissions.reduce((max, t) => {
