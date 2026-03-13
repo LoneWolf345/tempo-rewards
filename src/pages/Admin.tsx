@@ -589,12 +589,31 @@ export default function Admin() {
         const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
         setSendosoUploadError(`${summary}, but ${skippedRows.length} rows were skipped:\n${details}`);
       }
+
+      await logUpload({
+        upload_type: "sendoso",
+        file_name: file.name,
+        total_rows_in_file: lines.length - 1,
+        records_inserted: toInsert.length,
+        records_updated: toUpdate.length,
+        records_skipped: skippedRows.length,
+      });
+
       toast.success(summary);
       fetchAllData();
     } catch (error: any) {
       console.error("Upload error:", error);
       const msg = error?.message || error?.details || "Unknown error";
       setSendosoUploadError(`Failed to upload Sendoso CSV: ${msg}`);
+      await logUpload({
+        upload_type: "sendoso",
+        file_name: file.name,
+        total_rows_in_file: 0,
+        records_inserted: 0,
+        records_updated: 0,
+        records_skipped: 0,
+        error_message: msg,
+      });
     } finally {
       setIsUploading(false);
     }
