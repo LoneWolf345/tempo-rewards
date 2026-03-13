@@ -15,6 +15,10 @@ import { format } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 import { useEmulation } from "@/contexts/EmulationContext";
 
+const isValidDate = (dateStr: string): boolean => {
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr) && !isNaN(Date.parse(dateStr));
+};
+
 interface Profile {
   id: string;
   user_id: string;
