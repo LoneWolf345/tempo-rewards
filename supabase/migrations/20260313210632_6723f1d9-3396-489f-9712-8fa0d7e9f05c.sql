@@ -1,0 +1,1 @@
+ALTER TABLE public.tempo_submissions ADD COLUMN submission_id text UNIQUE;

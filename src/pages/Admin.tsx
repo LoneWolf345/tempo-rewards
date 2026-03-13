@@ -188,6 +188,7 @@ export default function Admin() {
       const lines = text.split("\n").filter((line) => line.trim());
       const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
 
+      const idIdx = headers.findIndex((h) => h === "id");
       const emailIdx = headers.findIndex((h) => h.includes("issued_to_email") || h.includes("email"));
       const amountIdx = headers.findIndex((h) => h === "amount" || h.includes("amount"));
       const dateIdx = headers.findIndex((h) => h.includes("issued_at") || h.includes("date"));
@@ -222,7 +223,14 @@ export default function Admin() {
           continue;
         }
 
+        const submissionId = idIdx >= 0 ? values[idIdx] || null : null;
+        if (!submissionId) {
+          skippedRows.push(`Row ${i + 1}: missing id value`);
+          continue;
+        }
+
         records.push({
+          submission_id: submissionId,
           technician_email: values[emailIdx],
           technician_name: null,
           upsell_amount: amount,
@@ -239,22 +247,19 @@ export default function Admin() {
         return;
       }
 
-      // Only delete after validation succeeds
-      await supabase.from("tempo_submissions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-
-      // Batch insert in chunks of 500
+      // Upsert in chunks of 500 — insert new, update existing by submission_id
       const chunkSize = 500;
       for (let j = 0; j < records.length; j += chunkSize) {
         const chunk = records.slice(j, j + chunkSize);
-        const { error } = await supabase.from("tempo_submissions").insert(chunk);
+        const { error } = await supabase.from("tempo_submissions").upsert(chunk, { onConflict: "submission_id" });
         if (error) throw error;
       }
 
       if (skippedRows.length > 0) {
         const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
-        setTempoUploadError(`Uploaded ${records.length} records, but ${skippedRows.length} rows were skipped:\n${details}`);
+        setTempoUploadError(`Synced ${records.length} records, but ${skippedRows.length} rows were skipped:\n${details}`);
       }
-      toast.success(`Replaced with ${records.length} TeMPO records`);
+      toast.success(`Synced ${records.length} TeMPO records`);
       fetchAllData();
     } catch (error: any) {
       console.error("Upload error:", error);

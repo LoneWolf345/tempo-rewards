@@ -89,6 +89,7 @@ export type Database = {
           id: string
           status: string
           submission_date: string
+          submission_id: string | null
           technician_email: string
           technician_name: string | null
           uploaded_at: string
@@ -100,6 +101,7 @@ export type Database = {
           id?: string
           status?: string
           submission_date: string
+          submission_id?: string | null
           technician_email: string
           technician_name?: string | null
           uploaded_at?: string
@@ -111,6 +113,7 @@ export type Database = {
           id?: string
           status?: string
           submission_date?: string
+          submission_id?: string | null
           technician_email?: string
           technician_name?: string | null
           uploaded_at?: string
