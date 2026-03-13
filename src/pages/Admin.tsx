@@ -621,13 +621,31 @@ export default function Admin() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="tempo-csv">Select CSV File</Label>
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                      tempoDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                    }`}
+                    onDragEnter={(e) => { e.preventDefault(); setTempoDragActive(true); }}
+                    onDragOver={(e) => { e.preventDefault(); setTempoDragActive(true); }}
+                    onDragLeave={(e) => { e.preventDefault(); setTempoDragActive(false); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setTempoDragActive(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) handleTempoUpload(file);
+                    }}
+                    onClick={() => document.getElementById("tempo-csv")?.click()}
+                  >
+                    <Upload className={`mx-auto h-8 w-8 mb-2 ${tempoDragActive ? "text-primary" : "text-muted-foreground"}`} />
+                    <p className="text-sm text-muted-foreground">
+                      {tempoDragActive ? "Drop the file here..." : "Drag and drop a CSV file here, or click to select"}
+                    </p>
                     <Input
                       id="tempo-csv"
                       type="file"
                       accept=".csv"
-                      onChange={handleTempoUpload}
+                      className="hidden"
+                      onChange={handleTempoFileSelect}
                       disabled={isUploading}
                     />
                   </div>
