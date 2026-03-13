@@ -82,6 +82,13 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
+  // Auto-expand the emulated user's row
+  useEffect(() => {
+    if (isEmulating && emulatedEmail) {
+      setExpandedEmails(new Set([emulatedEmail]));
+    }
+  }, [isEmulating, emulatedEmail]);
+
   const fetchAllRows = async <T,>(
     table: "tempo_submissions" | "sendoso_records",
     orderColumn: "submission_date" | "fulfillment_date",
