@@ -223,7 +223,14 @@ export default function Admin() {
           continue;
         }
 
+        const submissionId = idIdx >= 0 ? values[idIdx] || null : null;
+        if (!submissionId) {
+          skippedRows.push(`Row ${i + 1}: missing id value`);
+          continue;
+        }
+
         records.push({
+          submission_id: submissionId,
           technician_email: values[emailIdx],
           technician_name: null,
           upsell_amount: amount,
