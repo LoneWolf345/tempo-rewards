@@ -136,6 +136,10 @@ export default function Admin() {
   const [sendosoSearchInput, setSendosoSearchInput] = useState("");
   const [sendosoLoading, setSendosoLoading] = useState(false);
 
+  // Upload history state
+  const [uploadHistory, setUploadHistory] = useState<UploadHistoryRecord[]>([]);
+  const [uploadHistoryLoading, setUploadHistoryLoading] = useState(false);
+
   const PAGE_SIZE = 100;
 
   useEffect(() => {
