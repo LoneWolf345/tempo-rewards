@@ -25,6 +25,37 @@ const extractDate = (dateStr: string): string => {
   return dateStr.includes(" ") ? dateStr.split(" ")[0] : dateStr;
 };
 
+// Proper CSV line parser that handles quoted fields with commas inside
+const parseCSVLine = (line: string, delimiter: string = ","): string[] => {
+  const fields: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === delimiter) {
+        fields.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+};
+
 interface Profile {
   id: string;
   user_id: string;
@@ -195,11 +226,11 @@ export default function Admin() {
       // Detect delimiter (tab or comma)
       const firstLine = lines[0];
       const delimiter = firstLine.includes("\t") ? "\t" : ",";
-      const headers = firstLine.split(delimiter).map((h) => h.trim().toLowerCase().replace(/"/g, ""));
+      const headers = parseCSVLine(firstLine, delimiter).map((h) => h.toLowerCase());
 
       console.log("[TeMPO Upload] Detected delimiter:", delimiter === "\t" ? "TAB" : "COMMA");
       console.log("[TeMPO Upload] Headers found:", headers);
-      console.log("[TeMPO Upload] First data row:", lines[1]?.split(delimiter).map((v) => v.trim().replace(/"/g, "")));
+      console.log("[TeMPO Upload] First data row:", parseCSVLine(lines[1], delimiter));
 
       const idIdx = headers.findIndex((h) => h === "id");
       const emailIdx = headers.findIndex((h) => h.includes("issued_to_email") || h.includes("email"));
@@ -219,7 +250,7 @@ export default function Admin() {
       const skippedRows: string[] = [];
 
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(delimiter).map((v) => v.trim().replace(/"/g, ""));
+        const values = parseCSVLine(lines[i], delimiter);
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
 
         const dateValue = extractDate(values[dateIdx]);
@@ -296,7 +327,7 @@ export default function Admin() {
       const firstLine = lines[0];
       const delimiter = firstLine.includes("\t") ? "\t" : ",";
       
-      const headers = firstLine.split(delimiter).map((h) => h.trim().toLowerCase());
+      const headers = parseCSVLine(firstLine, delimiter).map((h) => h.toLowerCase());
 
       const emailIdx = headers.findIndex((h) => h.includes("recipient_email") || h.includes("email"));
       const statusIdx = headers.findIndex((h) => h === "status");
@@ -315,7 +346,7 @@ export default function Admin() {
       const skippedRows: string[] = [];
 
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(delimiter).map((v) => v.trim().replace(/"/g, ""));
+        const values = parseCSVLine(lines[i], delimiter);
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
 
         const dateValue = extractDate(values[dateIdx]);
