@@ -15,6 +15,10 @@ import { format } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 import { useEmulation } from "@/contexts/EmulationContext";
 
+const isValidDate = (dateStr: string): boolean => {
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr) && !isNaN(Date.parse(dateStr));
+};
+
 interface Profile {
   id: string;
   user_id: string;
@@ -188,11 +192,13 @@ export default function Admin() {
       const codeIdx = headers.findIndex((h) => h.includes("gift_card_code") || h.includes("code"));
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
-        toast.error("CSV must contain issued_to_email, amount, and issued_at columns");
+        toast.error("CSV must contain issued_to_email, amount, and issued_at columns", { duration: 10000 });
         return;
       }
 
       const records = [];
+      const skippedRows: string[] = [];
+
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(",").map((v) => v.trim().replace(/"/g, ""));
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
@@ -202,10 +208,21 @@ export default function Admin() {
           dateValue = dateValue.split(" ")[0];
         }
 
+        if (!isValidDate(dateValue)) {
+          skippedRows.push(`Row ${i + 1}: invalid date "${values[dateIdx]}"`);
+          continue;
+        }
+
+        const amount = parseFloat(values[amountIdx]);
+        if (isNaN(amount)) {
+          skippedRows.push(`Row ${i + 1}: invalid amount "${values[amountIdx]}"`);
+          continue;
+        }
+
         records.push({
           technician_email: values[emailIdx],
           technician_name: null,
-          upsell_amount: parseFloat(values[amountIdx]) || 0,
+          upsell_amount: amount,
           submission_date: dateValue,
           status: statusIdx >= 0 ? values[statusIdx] : "Issued",
           uploaded_by: user.id,
@@ -213,7 +230,15 @@ export default function Admin() {
         });
       }
 
-      // Clear all existing records first
+      if (records.length === 0) {
+        toast.error("No valid records found in CSV. All rows had errors.", {
+          duration: 10000,
+          description: skippedRows.slice(0, 5).join("\n") + (skippedRows.length > 5 ? `\n...and ${skippedRows.length - 5} more` : ""),
+        });
+        return;
+      }
+
+      // Only delete after validation succeeds
       await supabase.from("tempo_submissions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
 
       // Batch insert in chunks of 500
@@ -224,11 +249,19 @@ export default function Admin() {
         if (error) throw error;
       }
 
-      toast.success(`Replaced with ${records.length} TeMPO records`);
+      if (skippedRows.length > 0) {
+        toast.warning(`Uploaded ${records.length} records. ${skippedRows.length} rows skipped.`, {
+          duration: 10000,
+          description: skippedRows.slice(0, 5).join("\n") + (skippedRows.length > 5 ? `\n...and ${skippedRows.length - 5} more` : ""),
+        });
+      } else {
+        toast.success(`Replaced with ${records.length} TeMPO records`);
+      }
       fetchAllData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload error:", error);
-      toast.error("Failed to upload CSV");
+      const msg = error?.message || error?.details || "Unknown error";
+      toast.error(`Failed to upload TeMPO CSV: ${msg}`, { duration: 10000 });
     } finally {
       setIsUploading(false);
       e.target.value = "";
@@ -257,12 +290,14 @@ export default function Admin() {
       const txnIdIdx = headers.findIndex((h) => h === "transaction_id");
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
-        toast.error("CSV must contain recipient_email, egift_price, and created_at columns");
+        toast.error("CSV must contain recipient_email, egift_price, and created_at columns", { duration: 10000 });
         return;
       }
 
-      // Parse CSV rows
+      // Parse CSV rows with validation
       const csvRows = [];
+      const skippedRows: string[] = [];
+
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(delimiter).map((v) => v.trim().replace(/"/g, ""));
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
@@ -272,22 +307,45 @@ export default function Admin() {
           dateValue = dateValue.split(" ")[0];
         }
 
+        if (!isValidDate(dateValue)) {
+          skippedRows.push(`Row ${i + 1}: invalid date "${values[dateIdx]}"`);
+          continue;
+        }
+
         let expiryValue: string | null = null;
         if (expiryIdx >= 0 && values[expiryIdx]) {
           expiryValue = values[expiryIdx];
           if (expiryValue.includes(" ")) {
             expiryValue = expiryValue.split(" ")[0];
           }
+          if (!isValidDate(expiryValue)) {
+            skippedRows.push(`Row ${i + 1}: invalid expiry date "${values[expiryIdx]}"`);
+            continue;
+          }
+        }
+
+        const amount = parseFloat(values[amountIdx]);
+        if (isNaN(amount)) {
+          skippedRows.push(`Row ${i + 1}: invalid amount "${values[amountIdx]}"`);
+          continue;
         }
 
         csvRows.push({
           technician_email: values[emailIdx],
-          reward_amount: parseFloat(values[amountIdx]) || 0,
+          reward_amount: amount,
           fulfillment_date: dateValue,
           status: statusIdx >= 0 ? values[statusIdx] : "fulfilled",
           expiry_date: expiryValue,
           transaction_id: txnIdIdx >= 0 && values[txnIdIdx] ? values[txnIdIdx] : null,
         });
+      }
+
+      if (csvRows.length === 0) {
+        toast.error("No valid records found in CSV. All rows had errors.", {
+          duration: 10000,
+          description: skippedRows.slice(0, 5).join("\n") + (skippedRows.length > 5 ? `\n...and ${skippedRows.length - 5} more` : ""),
+        });
+        return;
       }
 
       // Fetch all existing records for matching
@@ -380,11 +438,20 @@ export default function Admin() {
         if (error) throw error;
       }
 
-      toast.success(`Imported ${toInsert.length} new records, updated ${toUpdate.length} existing records`);
+      let summary = `Imported ${toInsert.length} new, updated ${toUpdate.length} existing`;
+      if (skippedRows.length > 0) {
+        toast.warning(`${summary}. ${skippedRows.length} rows skipped.`, {
+          duration: 10000,
+          description: skippedRows.slice(0, 5).join("\n") + (skippedRows.length > 5 ? `\n...and ${skippedRows.length - 5} more` : ""),
+        });
+      } else {
+        toast.success(summary);
+      }
       fetchAllData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload error:", error);
-      toast.error("Failed to upload CSV");
+      const msg = error?.message || error?.details || "Unknown error";
+      toast.error(`Failed to upload Sendoso CSV: ${msg}`, { duration: 10000 });
     } finally {
       setIsUploading(false);
       e.target.value = "";
