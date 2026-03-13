@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye, X, History, Clock } from "lucide-react";
+import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye, X, History, Clock, Download } from "lucide-react";
 import { format } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 import { useEmulation } from "@/contexts/EmulationContext";
@@ -737,8 +737,27 @@ export default function Admin() {
                     1. Upload TeMPO CSV
                   </CardTitle>
                   <CardDescription>
-                    Upload gift card records from TeMPO. Required columns: issued_to_email, amount, issued_at. Optional: status
+                    Upload gift card records from TeMPO.
                   </CardDescription>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const csv = "id,issued_to_email,amount,issued_at,status\n";
+                      const blob = new Blob([csv], { type: "text/csv" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "tempo_template.csv";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <Download className="mr-1 h-3 w-3" />
+                    Download template
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div
@@ -789,8 +808,27 @@ export default function Admin() {
                     2. Upload Sendoso CSV
                   </CardTitle>
                   <CardDescription>
-                    Upload gift card fulfillment records from Sendoso. Required columns: recipient_email, egift_price, created_at. Optional: status, expiry_date, transaction_id. New records are added; existing matches (by transaction_id or email + date + amount) are updated.
+                    Upload gift card fulfillment records from Sendoso.
                   </CardDescription>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const csv = "recipient_email,egift_price,created_at,status,expiry_date,transaction_id\n";
+                      const blob = new Blob([csv], { type: "text/csv" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "sendoso_template.csv";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <Download className="mr-1 h-3 w-3" />
+                    Download template
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div
