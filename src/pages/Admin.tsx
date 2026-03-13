@@ -351,6 +351,15 @@ export default function Admin() {
       if (records.length === 0) {
         const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
         setTempoUploadError(`No valid records found. All rows had errors:\n${details}`);
+        await logUpload({
+          upload_type: "tempo",
+          file_name: file.name,
+          total_rows_in_file: lines.length - 1,
+          records_inserted: 0,
+          records_updated: 0,
+          records_skipped: skippedRows.length,
+          error_message: "No valid records found",
+        });
         return;
       }
 
@@ -366,12 +375,31 @@ export default function Admin() {
         const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
         setTempoUploadError(`Synced ${records.length} records, but ${skippedRows.length} rows were skipped:\n${details}`);
       }
+
+      await logUpload({
+        upload_type: "tempo",
+        file_name: file.name,
+        total_rows_in_file: lines.length - 1,
+        records_inserted: records.length,
+        records_updated: 0,
+        records_skipped: skippedRows.length,
+      });
+
       toast.success(`Synced ${records.length} TeMPO records`);
       fetchAllData();
     } catch (error: any) {
       console.error("Upload error:", error);
       const msg = error?.message || error?.details || "Unknown error";
       setTempoUploadError(`Failed to upload TeMPO CSV: ${msg}`);
+      await logUpload({
+        upload_type: "tempo",
+        file_name: file.name,
+        total_rows_in_file: 0,
+        records_inserted: 0,
+        records_updated: 0,
+        records_skipped: 0,
+        error_message: msg,
+      });
     } finally {
       setIsUploading(false);
     }
