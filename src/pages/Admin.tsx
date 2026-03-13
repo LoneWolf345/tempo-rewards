@@ -16,7 +16,13 @@ import { getStatusStyles } from "@/lib/statusStyles";
 import { useEmulation } from "@/contexts/EmulationContext";
 
 const isValidDate = (dateStr: string): boolean => {
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr) && !isNaN(Date.parse(dateStr));
+  // Accept YYYY-MM-DD or YYYY-MM-DD HH:MM:SS.ms formats
+  const dateOnly = dateStr.includes(" ") ? dateStr.split(" ")[0] : dateStr;
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) && !isNaN(Date.parse(dateOnly));
+};
+
+const extractDate = (dateStr: string): string => {
+  return dateStr.includes(" ") ? dateStr.split(" ")[0] : dateStr;
 };
 
 interface Profile {
@@ -207,10 +213,7 @@ export default function Admin() {
         const values = lines[i].split(",").map((v) => v.trim().replace(/"/g, ""));
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
 
-        let dateValue = values[dateIdx];
-        if (dateValue.includes(" ")) {
-          dateValue = dateValue.split(" ")[0];
-        }
+        const dateValue = extractDate(values[dateIdx]);
 
         if (!isValidDate(dateValue)) {
           skippedRows.push(`Row ${i + 1}: invalid date "${values[dateIdx]}"`);
@@ -306,10 +309,7 @@ export default function Admin() {
         const values = lines[i].split(delimiter).map((v) => v.trim().replace(/"/g, ""));
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
 
-        let dateValue = values[dateIdx];
-        if (dateValue.includes(" ")) {
-          dateValue = dateValue.split(" ")[0];
-        }
+        const dateValue = extractDate(values[dateIdx]);
 
         if (!isValidDate(dateValue)) {
           skippedRows.push(`Row ${i + 1}: invalid date "${values[dateIdx]}"`);
@@ -318,10 +318,7 @@ export default function Admin() {
 
         let expiryValue: string | null = null;
         if (expiryIdx >= 0 && values[expiryIdx]) {
-          expiryValue = values[expiryIdx];
-          if (expiryValue.includes(" ")) {
-            expiryValue = expiryValue.split(" ")[0];
-          }
+          expiryValue = extractDate(values[expiryIdx]);
           if (!isValidDate(expiryValue)) {
             skippedRows.push(`Row ${i + 1}: invalid expiry date "${values[expiryIdx]}"`);
             continue;
