@@ -582,6 +582,17 @@ export default function Admin() {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  onClick={() => {
+                                    startEmulation(profile.email);
+                                    navigate("/dashboard");
+                                  }}
+                                >
+                                  <Eye className="mr-1 h-3 w-3" />
+                                  View As
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() => toggleAdminRole(profile.user_id, role)}
                                 >
                                   <Shield className="mr-1 h-3 w-3" />
