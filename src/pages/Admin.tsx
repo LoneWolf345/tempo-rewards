@@ -153,6 +153,7 @@ export default function Admin() {
       fetchBaseData();
       fetchTempoPage();
       fetchSendosoPage();
+      fetchUploadHistory();
     }
   }, [isAdmin]);
 
