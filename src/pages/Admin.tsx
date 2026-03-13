@@ -218,8 +218,7 @@ export default function Admin() {
     return roles[0] || "technician";
   };
 
-  const handleTempoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleTempoUpload = async (file: File) => {
     if (!file || !user) return;
 
     setTempoUploadError(null);
