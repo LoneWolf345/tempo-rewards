@@ -234,10 +234,8 @@ export default function Admin() {
       }
 
       if (records.length === 0) {
-        toast.error("No valid records found in CSV. All rows had errors.", {
-          duration: 10000,
-          description: skippedRows.slice(0, 5).join("\n") + (skippedRows.length > 5 ? `\n...and ${skippedRows.length - 5} more` : ""),
-        });
+        const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
+        setTempoUploadError(`No valid records found. All rows had errors:\n${details}`);
         return;
       }
 
