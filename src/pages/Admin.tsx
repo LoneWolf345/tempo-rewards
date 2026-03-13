@@ -482,6 +482,15 @@ export default function Admin() {
       if (csvRows.length === 0) {
         const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
         setSendosoUploadError(`No valid records found. All rows had errors:\n${details}`);
+        await logUpload({
+          upload_type: "sendoso",
+          file_name: file.name,
+          total_rows_in_file: lines.length - 1,
+          records_inserted: 0,
+          records_updated: 0,
+          records_skipped: skippedRows.length,
+          error_message: "No valid records found",
+        });
         return;
       }
 
