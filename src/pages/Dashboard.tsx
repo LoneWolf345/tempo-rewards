@@ -506,9 +506,10 @@ export default function Dashboard() {
           {(["sent", "clicked", "opened", "used"] as const).map((status, i) => (
             <div key={status} className="flex items-center gap-2">
               {i > 0 && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
-              <div className={`rounded-lg border px-4 py-3 text-center min-w-[100px] ${getStatusStyles(status)}`}>
+              <div className={`rounded-lg border px-4 py-3 text-center min-w-[110px] ${getStatusStyles(status)}`}>
                 <div className="text-xs font-medium capitalize">{status}</div>
-                <div className="text-xl font-bold">{statusCounts[status]}</div>
+                <div className="text-xl font-bold">{statusCounts[status].count}</div>
+                <div className="text-xs opacity-80">${statusCounts[status].amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               </div>
             </div>
           ))}
