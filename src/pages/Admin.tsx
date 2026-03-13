@@ -62,6 +62,8 @@ export default function Admin() {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [tempoUploadError, setTempoUploadError] = useState<string | null>(null);
+  const [sendosoUploadError, setSendosoUploadError] = useState<string | null>(null);
 
   // TeMPO pagination state
   const [tempoRecords, setTempoRecords] = useState<TempoSubmission[]>([]);
