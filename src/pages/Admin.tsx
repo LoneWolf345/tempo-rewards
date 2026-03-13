@@ -139,6 +139,7 @@ export default function Admin() {
   // Upload history state
   const [uploadHistory, setUploadHistory] = useState<UploadHistoryRecord[]>([]);
   const [uploadHistoryLoading, setUploadHistoryLoading] = useState(false);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
 
   const PAGE_SIZE = 100;
 
