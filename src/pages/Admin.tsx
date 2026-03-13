@@ -195,7 +195,7 @@ export default function Admin() {
       const codeIdx = headers.findIndex((h) => h.includes("gift_card_code") || h.includes("code"));
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
-        toast.error("CSV must contain issued_to_email, amount, and issued_at columns", { duration: 10000 });
+        setTempoUploadError("CSV must contain issued_to_email, amount, and issued_at columns");
         return;
       }
 
