@@ -437,18 +437,15 @@ export default function Admin() {
 
       let summary = `Imported ${toInsert.length} new, updated ${toUpdate.length} existing`;
       if (skippedRows.length > 0) {
-        toast.warning(`${summary}. ${skippedRows.length} rows skipped.`, {
-          duration: 10000,
-          description: skippedRows.slice(0, 5).join("\n") + (skippedRows.length > 5 ? `\n...and ${skippedRows.length - 5} more` : ""),
-        });
-      } else {
-        toast.success(summary);
+        const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
+        setSendosoUploadError(`${summary}, but ${skippedRows.length} rows were skipped:\n${details}`);
       }
+      toast.success(summary);
       fetchAllData();
     } catch (error: any) {
       console.error("Upload error:", error);
       const msg = error?.message || error?.details || "Unknown error";
-      toast.error(`Failed to upload Sendoso CSV: ${msg}`, { duration: 10000 });
+      setSendosoUploadError(`Failed to upload Sendoso CSV: ${msg}`);
     } finally {
       setIsUploading(false);
       e.target.value = "";
