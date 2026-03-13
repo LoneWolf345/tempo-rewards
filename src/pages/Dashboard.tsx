@@ -358,6 +358,22 @@ export default function Dashboard() {
   const totalRewardAmount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.rewardTotal, 0);
   const mismatchCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "mismatch").length;
   const balancedCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "balanced").length;
+  const tempoLastUpdated = useMemo(() => {
+    if (tempoSubmissions.length === 0) return null;
+    return tempoSubmissions.reduce((max, t) => {
+      const d = new Date(t.uploaded_at).getTime();
+      return d > max ? d : max;
+    }, 0);
+  }, [tempoSubmissions]);
+
+  const sendosoLastUpdated = useMemo(() => {
+    if (sendosoRecords.length === 0) return null;
+    return sendosoRecords.reduce((max, s) => {
+      const d = new Date(s.uploaded_at).getTime();
+      return d > max ? d : max;
+    }, 0);
+  }, [sendosoRecords]);
+
   const matchedCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "matched").length;
 
   const toggleExpand = (email: string) => {
