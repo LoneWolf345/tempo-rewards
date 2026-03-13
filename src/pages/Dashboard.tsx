@@ -69,6 +69,7 @@ export default function Dashboard() {
   const { profile, signOut, isAdmin } = useAuth();
   const { emulatedEmail } = useEmulation();
   const isEmulating = isAdmin && !!emulatedEmail;
+  const [tempoSubmissions, setTempoSubmissions] = useState<TempoSubmission[]>([]);
   const [sendosoRecords, setSendosoRecords] = useState<SendosoRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set());
