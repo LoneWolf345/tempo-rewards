@@ -290,12 +290,14 @@ export default function Admin() {
       const txnIdIdx = headers.findIndex((h) => h === "transaction_id");
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
-        toast.error("CSV must contain recipient_email, egift_price, and created_at columns");
+        toast.error("CSV must contain recipient_email, egift_price, and created_at columns", { duration: 10000 });
         return;
       }
 
-      // Parse CSV rows
+      // Parse CSV rows with validation
       const csvRows = [];
+      const skippedRows: string[] = [];
+
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(delimiter).map((v) => v.trim().replace(/"/g, ""));
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
@@ -305,22 +307,45 @@ export default function Admin() {
           dateValue = dateValue.split(" ")[0];
         }
 
+        if (!isValidDate(dateValue)) {
+          skippedRows.push(`Row ${i + 1}: invalid date "${values[dateIdx]}"`);
+          continue;
+        }
+
         let expiryValue: string | null = null;
         if (expiryIdx >= 0 && values[expiryIdx]) {
           expiryValue = values[expiryIdx];
           if (expiryValue.includes(" ")) {
             expiryValue = expiryValue.split(" ")[0];
           }
+          if (!isValidDate(expiryValue)) {
+            skippedRows.push(`Row ${i + 1}: invalid expiry date "${values[expiryIdx]}"`);
+            continue;
+          }
+        }
+
+        const amount = parseFloat(values[amountIdx]);
+        if (isNaN(amount)) {
+          skippedRows.push(`Row ${i + 1}: invalid amount "${values[amountIdx]}"`);
+          continue;
         }
 
         csvRows.push({
           technician_email: values[emailIdx],
-          reward_amount: parseFloat(values[amountIdx]) || 0,
+          reward_amount: amount,
           fulfillment_date: dateValue,
           status: statusIdx >= 0 ? values[statusIdx] : "fulfilled",
           expiry_date: expiryValue,
           transaction_id: txnIdIdx >= 0 && values[txnIdIdx] ? values[txnIdIdx] : null,
         });
+      }
+
+      if (csvRows.length === 0) {
+        toast.error("No valid records found in CSV. All rows had errors.", {
+          duration: 10000,
+          description: skippedRows.slice(0, 5).join("\n") + (skippedRows.length > 5 ? `\n...and ${skippedRows.length - 5} more` : ""),
+        });
+        return;
       }
 
       // Fetch all existing records for matching
