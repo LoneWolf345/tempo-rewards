@@ -259,7 +259,7 @@ export default function Admin() {
     } catch (error: any) {
       console.error("Upload error:", error);
       const msg = error?.message || error?.details || "Unknown error";
-      toast.error(`Failed to upload TeMPO CSV: ${msg}`, { duration: 10000 });
+      setTempoUploadError(`Failed to upload TeMPO CSV: ${msg}`);
     } finally {
       setIsUploading(false);
       e.target.value = "";
