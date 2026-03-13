@@ -225,10 +225,50 @@ export default function Admin() {
     }
   };
 
+  const fetchUploadHistory = async () => {
+    setUploadHistoryLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("upload_history")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      setUploadHistory((data || []) as UploadHistoryRecord[]);
+    } catch (error) {
+      console.error("Error fetching upload history:", error);
+    } finally {
+      setUploadHistoryLoading(false);
+    }
+  };
+
+  const logUpload = async (params: {
+    upload_type: string;
+    file_name: string;
+    total_rows_in_file: number;
+    records_inserted: number;
+    records_updated: number;
+    records_skipped: number;
+    error_message?: string | null;
+  }) => {
+    try {
+      const profile = profiles.find(p => p.user_id === user?.id);
+      await supabase.from("upload_history").insert({
+        uploaded_by: user!.id,
+        uploaded_by_email: profile?.email || user!.email || "unknown",
+        ...params,
+      });
+      fetchUploadHistory();
+    } catch (err) {
+      console.error("Failed to log upload:", err);
+    }
+  };
+
   const fetchAllData = () => {
     fetchBaseData();
     fetchTempoPage();
     fetchSendosoPage();
+    fetchUploadHistory();
   };
 
   const getUserRole = (userId: string) => {
