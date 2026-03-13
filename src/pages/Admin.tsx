@@ -53,6 +53,7 @@ interface SendosoRecord {
 export default function Admin() {
   const { isAdmin, isLoading: authLoading, user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { startEmulation } = useEmulation();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
