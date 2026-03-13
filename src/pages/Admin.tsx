@@ -91,6 +91,20 @@ interface SendosoRecord {
   transaction_id: string | null;
 }
 
+interface UploadHistoryRecord {
+  id: string;
+  uploaded_by: string;
+  uploaded_by_email: string;
+  upload_type: string;
+  file_name: string;
+  total_rows_in_file: number;
+  records_inserted: number;
+  records_updated: number;
+  records_skipped: number;
+  error_message: string | null;
+  created_at: string;
+}
+
 export default function Admin() {
   const { isAdmin, isLoading: authLoading, user, signOut } = useAuth();
   const navigate = useNavigate();
