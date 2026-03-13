@@ -131,9 +131,10 @@ export default function Auth() {
                     id="signup-email"
                     name="email"
                     type="email"
-                    placeholder="you@company.com"
+                    placeholder="LastF@corp.cableone.net"
                     required
                   />
+                  <p className="text-xs text-muted-foreground">Use format: LastF@corp.cableone.net</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Password</Label>
