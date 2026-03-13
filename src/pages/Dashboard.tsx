@@ -377,25 +377,34 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
+      <EmulationBanner />
       <header className="border-b bg-card">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <div>
             <h1 className="text-xl font-bold">TeMPO Rewards Tracker</h1>
             <p className="text-sm text-muted-foreground">
-              Welcome, {profile?.full_name || profile?.email}
-              {isAdmin && <Badge variant="secondary" className="ml-2">Admin</Badge>}
+              {isEmulating ? (
+                <>Viewing as <strong>{emulatedEmail}</strong></>
+              ) : (
+                <>
+                  Welcome, {profile?.full_name || profile?.email}
+                  {isAdmin && <Badge variant="secondary" className="ml-2">Admin</Badge>}
+                </>
+              )}
             </p>
           </div>
           <div className="flex gap-2">
-            {isAdmin && (
+            {isAdmin && !isEmulating && (
               <Button variant="outline" asChild>
                 <a href="/admin">Admin Panel</a>
               </Button>
             )}
-            <Button variant="ghost" onClick={signOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </Button>
+            {!isEmulating && (
+              <Button variant="ghost" onClick={signOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </Button>
+            )}
           </div>
         </div>
       </header>
