@@ -327,7 +327,7 @@ export default function Admin() {
       const firstLine = lines[0];
       const delimiter = firstLine.includes("\t") ? "\t" : ",";
       
-      const headers = firstLine.split(delimiter).map((h) => h.trim().toLowerCase());
+      const headers = parseCSVLine(firstLine, delimiter).map((h) => h.toLowerCase());
 
       const emailIdx = headers.findIndex((h) => h.includes("recipient_email") || h.includes("email"));
       const statusIdx = headers.findIndex((h) => h === "status");
