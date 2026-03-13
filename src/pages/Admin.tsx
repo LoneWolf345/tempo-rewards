@@ -315,8 +315,15 @@ export default function Admin() {
       setTempoUploadError(`Failed to upload TeMPO CSV: ${msg}`);
     } finally {
       setIsUploading(false);
-      e.target.value = "";
     }
+  };
+
+  const handleTempoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleTempoUpload(file);
+    }
+    e.target.value = "";
   };
 
   const handleSendosoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
