@@ -213,10 +213,7 @@ export default function Admin() {
         const values = lines[i].split(",").map((v) => v.trim().replace(/"/g, ""));
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
 
-        let dateValue = values[dateIdx];
-        if (dateValue.includes(" ")) {
-          dateValue = dateValue.split(" ")[0];
-        }
+        const dateValue = extractDate(values[dateIdx]);
 
         if (!isValidDate(dateValue)) {
           skippedRows.push(`Row ${i + 1}: invalid date "${values[dateIdx]}"`);
