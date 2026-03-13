@@ -289,7 +289,7 @@ export default function Admin() {
       const txnIdIdx = headers.findIndex((h) => h === "transaction_id");
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
-        toast.error("CSV must contain recipient_email, egift_price, and created_at columns", { duration: 10000 });
+        setSendosoUploadError("CSV must contain recipient_email, egift_price, and created_at columns");
         return;
       }
 
