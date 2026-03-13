@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye, X } from "lucide-react";
+import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye, X, History, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 import { useEmulation } from "@/contexts/EmulationContext";
@@ -91,6 +91,20 @@ interface SendosoRecord {
   transaction_id: string | null;
 }
 
+interface UploadHistoryRecord {
+  id: string;
+  uploaded_by: string;
+  uploaded_by_email: string;
+  upload_type: string;
+  file_name: string;
+  total_rows_in_file: number;
+  records_inserted: number;
+  records_updated: number;
+  records_skipped: number;
+  error_message: string | null;
+  created_at: string;
+}
+
 export default function Admin() {
   const { isAdmin, isLoading: authLoading, user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -122,6 +136,10 @@ export default function Admin() {
   const [sendosoSearchInput, setSendosoSearchInput] = useState("");
   const [sendosoLoading, setSendosoLoading] = useState(false);
 
+  // Upload history state
+  const [uploadHistory, setUploadHistory] = useState<UploadHistoryRecord[]>([]);
+  const [uploadHistoryLoading, setUploadHistoryLoading] = useState(false);
+
   const PAGE_SIZE = 100;
 
   useEffect(() => {
@@ -135,6 +153,7 @@ export default function Admin() {
       fetchBaseData();
       fetchTempoPage();
       fetchSendosoPage();
+      fetchUploadHistory();
     }
   }, [isAdmin]);
 
@@ -206,10 +225,50 @@ export default function Admin() {
     }
   };
 
+  const fetchUploadHistory = async () => {
+    setUploadHistoryLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("upload_history")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      setUploadHistory((data || []) as UploadHistoryRecord[]);
+    } catch (error) {
+      console.error("Error fetching upload history:", error);
+    } finally {
+      setUploadHistoryLoading(false);
+    }
+  };
+
+  const logUpload = async (params: {
+    upload_type: string;
+    file_name: string;
+    total_rows_in_file: number;
+    records_inserted: number;
+    records_updated: number;
+    records_skipped: number;
+    error_message?: string | null;
+  }) => {
+    try {
+      const profile = profiles.find(p => p.user_id === user?.id);
+      await supabase.from("upload_history").insert({
+        uploaded_by: user!.id,
+        uploaded_by_email: profile?.email || user!.email || "unknown",
+        ...params,
+      });
+      fetchUploadHistory();
+    } catch (err) {
+      console.error("Failed to log upload:", err);
+    }
+  };
+
   const fetchAllData = () => {
     fetchBaseData();
     fetchTempoPage();
     fetchSendosoPage();
+    fetchUploadHistory();
   };
 
   const getUserRole = (userId: string) => {
@@ -292,6 +351,15 @@ export default function Admin() {
       if (records.length === 0) {
         const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
         setTempoUploadError(`No valid records found. All rows had errors:\n${details}`);
+        await logUpload({
+          upload_type: "tempo",
+          file_name: file.name,
+          total_rows_in_file: lines.length - 1,
+          records_inserted: 0,
+          records_updated: 0,
+          records_skipped: skippedRows.length,
+          error_message: "No valid records found",
+        });
         return;
       }
 
@@ -307,12 +375,31 @@ export default function Admin() {
         const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
         setTempoUploadError(`Synced ${records.length} records, but ${skippedRows.length} rows were skipped:\n${details}`);
       }
+
+      await logUpload({
+        upload_type: "tempo",
+        file_name: file.name,
+        total_rows_in_file: lines.length - 1,
+        records_inserted: records.length,
+        records_updated: 0,
+        records_skipped: skippedRows.length,
+      });
+
       toast.success(`Synced ${records.length} TeMPO records`);
       fetchAllData();
     } catch (error: any) {
       console.error("Upload error:", error);
       const msg = error?.message || error?.details || "Unknown error";
       setTempoUploadError(`Failed to upload TeMPO CSV: ${msg}`);
+      await logUpload({
+        upload_type: "tempo",
+        file_name: file.name,
+        total_rows_in_file: 0,
+        records_inserted: 0,
+        records_updated: 0,
+        records_skipped: 0,
+        error_message: msg,
+      });
     } finally {
       setIsUploading(false);
     }
@@ -395,6 +482,15 @@ export default function Admin() {
       if (csvRows.length === 0) {
         const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
         setSendosoUploadError(`No valid records found. All rows had errors:\n${details}`);
+        await logUpload({
+          upload_type: "sendoso",
+          file_name: file.name,
+          total_rows_in_file: lines.length - 1,
+          records_inserted: 0,
+          records_updated: 0,
+          records_skipped: skippedRows.length,
+          error_message: "No valid records found",
+        });
         return;
       }
 
@@ -493,12 +589,31 @@ export default function Admin() {
         const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
         setSendosoUploadError(`${summary}, but ${skippedRows.length} rows were skipped:\n${details}`);
       }
+
+      await logUpload({
+        upload_type: "sendoso",
+        file_name: file.name,
+        total_rows_in_file: lines.length - 1,
+        records_inserted: toInsert.length,
+        records_updated: toUpdate.length,
+        records_skipped: skippedRows.length,
+      });
+
       toast.success(summary);
       fetchAllData();
     } catch (error: any) {
       console.error("Upload error:", error);
       const msg = error?.message || error?.details || "Unknown error";
       setSendosoUploadError(`Failed to upload Sendoso CSV: ${msg}`);
+      await logUpload({
+        upload_type: "sendoso",
+        file_name: file.name,
+        total_rows_in_file: 0,
+        records_inserted: 0,
+        records_updated: 0,
+        records_skipped: 0,
+        error_message: msg,
+      });
     } finally {
       setIsUploading(false);
     }
@@ -601,6 +716,10 @@ export default function Admin() {
             <TabsTrigger value="sendoso">
               <Gift className="mr-2 h-4 w-4" />
               Sendoso Records ({sendosoTotal})
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <History className="mr-2 h-4 w-4" />
+              Upload History
             </TabsTrigger>
           </TabsList>
 
@@ -927,6 +1046,69 @@ export default function Admin() {
                       </div>
                     </div>
                   </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Upload History Tab */}
+          <TabsContent value="history">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Upload History
+                </CardTitle>
+                <CardDescription>Log of all CSV uploads with stats and user info</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {uploadHistoryLoading ? (
+                  <p className="text-muted-foreground">Loading...</p>
+                ) : uploadHistory.length === 0 ? (
+                  <p className="text-muted-foreground">No uploads recorded yet</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>File</TableHead>
+                        <TableHead>Uploaded By</TableHead>
+                        <TableHead>Total Rows</TableHead>
+                        <TableHead>Inserted</TableHead>
+                        <TableHead>Updated</TableHead>
+                        <TableHead>Skipped</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {uploadHistory.map((record) => (
+                        <TableRow key={record.id}>
+                          <TableCell className="whitespace-nowrap">
+                            {format(new Date(record.created_at), "MMM d, yyyy h:mm a")}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={record.upload_type === "tempo" ? "default" : "secondary"}>
+                              {record.upload_type === "tempo" ? "TeMPO" : "Sendoso"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate text-sm">{record.file_name}</TableCell>
+                          <TableCell className="text-sm">{record.uploaded_by_email}</TableCell>
+                          <TableCell>{record.total_rows_in_file}</TableCell>
+                          <TableCell className="text-green-600 dark:text-green-400">{record.records_inserted}</TableCell>
+                          <TableCell className="text-blue-600 dark:text-blue-400">{record.records_updated}</TableCell>
+                          <TableCell className={record.records_skipped > 0 ? "text-amber-600 dark:text-amber-400" : ""}>{record.records_skipped}</TableCell>
+                          <TableCell>
+                            {record.error_message ? (
+                              <Badge variant="destructive">Error</Badge>
+                            ) : (
+                              <Badge className="bg-green-600 hover:bg-green-700">Success</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 )}
               </CardContent>
             </Card>

@@ -122,6 +122,48 @@ export type Database = {
         }
         Relationships: []
       }
+      upload_history: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          file_name: string
+          id: string
+          records_inserted: number
+          records_skipped: number
+          records_updated: number
+          total_rows_in_file: number
+          upload_type: string
+          uploaded_by: string
+          uploaded_by_email: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          file_name: string
+          id?: string
+          records_inserted?: number
+          records_skipped?: number
+          records_updated?: number
+          total_rows_in_file?: number
+          upload_type: string
+          uploaded_by: string
+          uploaded_by_email: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          file_name?: string
+          id?: string
+          records_inserted?: number
+          records_skipped?: number
+          records_updated?: number
+          total_rows_in_file?: number
+          upload_type?: string
+          uploaded_by?: string
+          uploaded_by_email?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
