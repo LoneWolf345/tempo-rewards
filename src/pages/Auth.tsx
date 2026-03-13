@@ -55,6 +55,11 @@ export default function Auth() {
     const password = formData.get("password") as string;
     const fullName = formData.get("fullName") as string;
 
+    if (!validateEmail(email)) {
+      setIsLoading(false);
+      return;
+    }
+
     const { error } = await signUp(email, password, fullName);
 
     if (error) {
