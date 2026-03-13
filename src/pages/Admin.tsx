@@ -229,8 +229,10 @@ export default function Admin() {
       const headers = parseCSVLine(firstLine, delimiter).map((h) => h.toLowerCase());
 
       console.log("[TeMPO Upload] Detected delimiter:", delimiter === "\t" ? "TAB" : "COMMA");
+      console.log("[TeMPO Upload] RAW first line:", firstLine);
+      console.log("[TeMPO Upload] RAW second line:", lines[1]);
       console.log("[TeMPO Upload] Headers found:", headers);
-      console.log("[TeMPO Upload] First data row:", parseCSVLine(lines[1], delimiter));
+      console.log("[TeMPO Upload] Parsed data row:", parseCSVLine(lines[1], delimiter));
 
       const idIdx = headers.findIndex((h) => h === "id");
       const emailIdx = headers.findIndex((h) => h.includes("issued_to_email") || h.includes("email"));
