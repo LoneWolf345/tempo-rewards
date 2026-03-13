@@ -297,6 +297,11 @@ export default function Dashboard() {
   const filteredAndSortedSummaries = useMemo(() => {
     let result = emailSummaries;
 
+    // When emulating, show only the emulated user
+    if (isEmulating && emulatedEmail) {
+      result = result.filter((s) => s.email === emulatedEmail);
+    }
+
     // Filter by search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -336,14 +341,15 @@ export default function Dashboard() {
     }
 
     return result;
-  }, [emailSummaries, searchQuery, statusFilter, sortColumn, sortDirection]);
+  }, [emailSummaries, searchQuery, statusFilter, sortColumn, sortDirection, isEmulating, emulatedEmail]);
 
-  const totalSubmissions = tempoSubmissions.length;
-  const totalRewards = emailSummaries.reduce((sum, s) => sum + s.rewardCount, 0);
-  const totalRewardAmount = emailSummaries.reduce((sum, s) => sum + s.rewardTotal, 0);
-  const mismatchCount = emailSummaries.filter((s) => s.reconciliationStatus === "mismatch").length;
-  const balancedCount = emailSummaries.filter((s) => s.reconciliationStatus === "balanced").length;
-  const matchedCount = emailSummaries.filter((s) => s.reconciliationStatus === "matched").length;
+  const displaySummaries = isEmulating ? filteredAndSortedSummaries : filteredAndSortedSummaries;
+  const totalSubmissions = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.tempoCount, 0);
+  const totalRewards = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.rewardCount, 0);
+  const totalRewardAmount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).reduce((sum, s) => sum + s.rewardTotal, 0);
+  const mismatchCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "mismatch").length;
+  const balancedCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "balanced").length;
+  const matchedCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "matched").length;
 
   const toggleExpand = (email: string) => {
     setExpandedEmails((prev) => {
