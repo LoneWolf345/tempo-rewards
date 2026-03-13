@@ -16,7 +16,13 @@ import { getStatusStyles } from "@/lib/statusStyles";
 import { useEmulation } from "@/contexts/EmulationContext";
 
 const isValidDate = (dateStr: string): boolean => {
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateStr) && !isNaN(Date.parse(dateStr));
+  // Accept YYYY-MM-DD or YYYY-MM-DD HH:MM:SS.ms formats
+  const dateOnly = dateStr.includes(" ") ? dateStr.split(" ")[0] : dateStr;
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) && !isNaN(Date.parse(dateOnly));
+};
+
+const extractDate = (dateStr: string): string => {
+  return dateStr.includes(" ") ? dateStr.split(" ")[0] : dateStr;
 };
 
 interface Profile {
