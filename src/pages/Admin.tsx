@@ -438,11 +438,20 @@ export default function Admin() {
         if (error) throw error;
       }
 
-      toast.success(`Imported ${toInsert.length} new records, updated ${toUpdate.length} existing records`);
+      let summary = `Imported ${toInsert.length} new, updated ${toUpdate.length} existing`;
+      if (skippedRows.length > 0) {
+        toast.warning(`${summary}. ${skippedRows.length} rows skipped.`, {
+          duration: 10000,
+          description: skippedRows.slice(0, 5).join("\n") + (skippedRows.length > 5 ? `\n...and ${skippedRows.length - 5} more` : ""),
+        });
+      } else {
+        toast.success(summary);
+      }
       fetchAllData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload error:", error);
-      toast.error("Failed to upload CSV");
+      const msg = error?.message || error?.details || "Unknown error";
+      toast.error(`Failed to upload Sendoso CSV: ${msg}`, { duration: 10000 });
     } finally {
       setIsUploading(false);
       e.target.value = "";
