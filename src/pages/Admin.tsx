@@ -192,7 +192,14 @@ export default function Admin() {
     try {
       const text = await file.text();
       const lines = text.split("\n").filter((line) => line.trim());
-      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+      // Detect delimiter (tab or comma)
+      const firstLine = lines[0];
+      const delimiter = firstLine.includes("\t") ? "\t" : ",";
+      const headers = firstLine.split(delimiter).map((h) => h.trim().toLowerCase().replace(/"/g, ""));
+
+      console.log("[TeMPO Upload] Detected delimiter:", delimiter === "\t" ? "TAB" : "COMMA");
+      console.log("[TeMPO Upload] Headers found:", headers);
+      console.log("[TeMPO Upload] First data row:", lines[1]?.split(delimiter).map((v) => v.trim().replace(/"/g, "")));
 
       const idIdx = headers.findIndex((h) => h === "id");
       const emailIdx = headers.findIndex((h) => h.includes("issued_to_email") || h.includes("email"));
@@ -201,8 +208,10 @@ export default function Admin() {
       const statusIdx = headers.findIndex((h) => h === "status");
       const codeIdx = headers.findIndex((h) => h.includes("gift_card_code") || h.includes("code"));
 
+      console.log("[TeMPO Upload] Column indices:", { idIdx, emailIdx, amountIdx, dateIdx, statusIdx, codeIdx });
+
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
-        setTempoUploadError("CSV must contain issued_to_email, amount, and issued_at columns");
+        setTempoUploadError(`CSV must contain issued_to_email, amount, and issued_at columns. Found headers: ${headers.join(", ")}`);
         return;
       }
 
@@ -210,7 +219,7 @@ export default function Admin() {
       const skippedRows: string[] = [];
 
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(",").map((v) => v.trim().replace(/"/g, ""));
+        const values = lines[i].split(delimiter).map((v) => v.trim().replace(/"/g, ""));
         if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
 
         const dateValue = extractDate(values[dateIdx]);
