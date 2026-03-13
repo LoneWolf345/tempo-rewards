@@ -102,6 +102,10 @@ export default function Admin() {
   const [tempoUploadError, setTempoUploadError] = useState<string | null>(null);
   const [sendosoUploadError, setSendosoUploadError] = useState<string | null>(null);
 
+  // Drag and drop state
+  const [tempoDragActive, setTempoDragActive] = useState(false);
+  const [sendosoDragActive, setSendosoDragActive] = useState(false);
+
   // TeMPO pagination state
   const [tempoRecords, setTempoRecords] = useState<TempoSubmission[]>([]);
   const [tempoTotal, setTempoTotal] = useState(0);
