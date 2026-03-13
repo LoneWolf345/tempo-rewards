@@ -251,13 +251,10 @@ export default function Admin() {
       }
 
       if (skippedRows.length > 0) {
-        toast.warning(`Uploaded ${records.length} records. ${skippedRows.length} rows skipped.`, {
-          duration: 10000,
-          description: skippedRows.slice(0, 5).join("\n") + (skippedRows.length > 5 ? `\n...and ${skippedRows.length - 5} more` : ""),
-        });
-      } else {
-        toast.success(`Replaced with ${records.length} TeMPO records`);
+        const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
+        setTempoUploadError(`Uploaded ${records.length} records, but ${skippedRows.length} rows were skipped:\n${details}`);
       }
+      toast.success(`Replaced with ${records.length} TeMPO records`);
       fetchAllData();
     } catch (error: any) {
       console.error("Upload error:", error);
