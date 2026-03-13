@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye, X } from "lucide-react";
 import { format } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 import { useEmulation } from "@/contexts/EmulationContext";
@@ -62,6 +62,8 @@ export default function Admin() {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [tempoUploadError, setTempoUploadError] = useState<string | null>(null);
+  const [sendosoUploadError, setSendosoUploadError] = useState<string | null>(null);
 
   // TeMPO pagination state
   const [tempoRecords, setTempoRecords] = useState<TempoSubmission[]>([]);
@@ -179,6 +181,7 @@ export default function Admin() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    setTempoUploadError(null);
     setIsUploading(true);
     try {
       const text = await file.text();
@@ -192,7 +195,7 @@ export default function Admin() {
       const codeIdx = headers.findIndex((h) => h.includes("gift_card_code") || h.includes("code"));
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
-        toast.error("CSV must contain issued_to_email, amount, and issued_at columns", { duration: 10000 });
+        setTempoUploadError("CSV must contain issued_to_email, amount, and issued_at columns");
         return;
       }
 
@@ -231,10 +234,8 @@ export default function Admin() {
       }
 
       if (records.length === 0) {
-        toast.error("No valid records found in CSV. All rows had errors.", {
-          duration: 10000,
-          description: skippedRows.slice(0, 5).join("\n") + (skippedRows.length > 5 ? `\n...and ${skippedRows.length - 5} more` : ""),
-        });
+        const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
+        setTempoUploadError(`No valid records found. All rows had errors:\n${details}`);
         return;
       }
 
@@ -250,18 +251,15 @@ export default function Admin() {
       }
 
       if (skippedRows.length > 0) {
-        toast.warning(`Uploaded ${records.length} records. ${skippedRows.length} rows skipped.`, {
-          duration: 10000,
-          description: skippedRows.slice(0, 5).join("\n") + (skippedRows.length > 5 ? `\n...and ${skippedRows.length - 5} more` : ""),
-        });
-      } else {
-        toast.success(`Replaced with ${records.length} TeMPO records`);
+        const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
+        setTempoUploadError(`Uploaded ${records.length} records, but ${skippedRows.length} rows were skipped:\n${details}`);
       }
+      toast.success(`Replaced with ${records.length} TeMPO records`);
       fetchAllData();
     } catch (error: any) {
       console.error("Upload error:", error);
       const msg = error?.message || error?.details || "Unknown error";
-      toast.error(`Failed to upload TeMPO CSV: ${msg}`, { duration: 10000 });
+      setTempoUploadError(`Failed to upload TeMPO CSV: ${msg}`);
     } finally {
       setIsUploading(false);
       e.target.value = "";
@@ -272,6 +270,7 @@ export default function Admin() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    setSendosoUploadError(null);
     setIsUploading(true);
     try {
       const text = await file.text();
@@ -290,7 +289,7 @@ export default function Admin() {
       const txnIdIdx = headers.findIndex((h) => h === "transaction_id");
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
-        toast.error("CSV must contain recipient_email, egift_price, and created_at columns", { duration: 10000 });
+        setSendosoUploadError("CSV must contain recipient_email, egift_price, and created_at columns");
         return;
       }
 
@@ -341,10 +340,8 @@ export default function Admin() {
       }
 
       if (csvRows.length === 0) {
-        toast.error("No valid records found in CSV. All rows had errors.", {
-          duration: 10000,
-          description: skippedRows.slice(0, 5).join("\n") + (skippedRows.length > 5 ? `\n...and ${skippedRows.length - 5} more` : ""),
-        });
+        const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
+        setSendosoUploadError(`No valid records found. All rows had errors:\n${details}`);
         return;
       }
 
@@ -440,18 +437,15 @@ export default function Admin() {
 
       let summary = `Imported ${toInsert.length} new, updated ${toUpdate.length} existing`;
       if (skippedRows.length > 0) {
-        toast.warning(`${summary}. ${skippedRows.length} rows skipped.`, {
-          duration: 10000,
-          description: skippedRows.slice(0, 5).join("\n") + (skippedRows.length > 5 ? `\n...and ${skippedRows.length - 5} more` : ""),
-        });
-      } else {
-        toast.success(summary);
+        const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
+        setSendosoUploadError(`${summary}, but ${skippedRows.length} rows were skipped:\n${details}`);
       }
+      toast.success(summary);
       fetchAllData();
     } catch (error: any) {
       console.error("Upload error:", error);
       const msg = error?.message || error?.details || "Unknown error";
-      toast.error(`Failed to upload Sendoso CSV: ${msg}`, { duration: 10000 });
+      setSendosoUploadError(`Failed to upload Sendoso CSV: ${msg}`);
     } finally {
       setIsUploading(false);
       e.target.value = "";
@@ -577,6 +571,16 @@ export default function Admin() {
                       disabled={isUploading}
                     />
                   </div>
+                  {tempoUploadError && (
+                    <div className="rounded-md border border-destructive bg-destructive/10 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <pre className="whitespace-pre-wrap text-sm text-destructive flex-1">{tempoUploadError}</pre>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setTempoUploadError(null)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -601,6 +605,16 @@ export default function Admin() {
                       disabled={isUploading}
                     />
                   </div>
+                  {sendosoUploadError && (
+                    <div className="rounded-md border border-destructive bg-destructive/10 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <pre className="whitespace-pre-wrap text-sm text-destructive flex-1">{sendosoUploadError}</pre>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setSendosoUploadError(null)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
