@@ -434,6 +434,18 @@ export default function Dashboard() {
         </div>
       </header>
 
+      {/* Data Freshness Banner */}
+      <div className="border-b bg-muted/50">
+        <div className="container mx-auto flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground">
+          <Info className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            Data is refreshed approximately once per week.
+            {" · "}TeMPO data: {tempoLastUpdated ? `updated ${formatDistanceToNow(new Date(tempoLastUpdated), { addSuffix: true })}` : "No data"}
+            {" · "}Sendoso data: {sendosoLastUpdated ? `updated ${formatDistanceToNow(new Date(sendosoLastUpdated), { addSuffix: true })}` : "No data"}
+          </span>
+        </div>
+      </div>
+
       <main className="container mx-auto px-4 py-8">
         {/* Summary Cards */}
         <div className="mb-8 grid gap-4 md:grid-cols-4">
