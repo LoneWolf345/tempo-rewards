@@ -502,19 +502,19 @@ export default function Dashboard() {
         </div>
 
         {/* Status Pipeline */}
-        <div className="mb-8 flex flex-wrap items-center gap-2">
+        <div className="mb-8 flex items-center gap-2">
           {(["sent", "clicked", "opened", "used"] as const).map((status, i) => (
-            <div key={status} className="flex items-center gap-2">
-              {i > 0 && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
-              <div className={`rounded-lg border px-4 py-3 text-center min-w-[110px] ${getStatusStyles(status)}`}>
+            <div key={status} className="flex flex-1 items-center gap-2">
+              {i > 0 && <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />}
+              <div className={`flex-1 rounded-lg border px-4 py-3 text-center ${getStatusStyles(status)}`}>
                 <div className="text-xs font-medium capitalize">{status}</div>
                 <div className="text-xl font-bold">{statusCounts[status].count}</div>
                 <div className="text-xs opacity-80">${statusCounts[status].amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               </div>
             </div>
           ))}
-          <div className="ml-4 flex items-center gap-2">
-            <div className={`rounded-lg border px-4 py-3 text-center min-w-[110px] ${getStatusStyles("expired")}`}>
+          <div className="ml-2 flex flex-1 items-center gap-2">
+            <div className={`flex-1 rounded-lg border px-4 py-3 text-center ${getStatusStyles("expired")}`}>
               <div className="text-xs font-medium">Expired/Credited</div>
               <div className="text-xl font-bold">{statusCounts["expired/credited"].count}</div>
               <div className="text-xs opacity-80">${statusCounts["expired/credited"].amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
