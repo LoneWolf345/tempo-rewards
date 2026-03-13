@@ -1050,6 +1050,69 @@ export default function Admin() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Upload History Tab */}
+          <TabsContent value="history">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Upload History
+                </CardTitle>
+                <CardDescription>Log of all CSV uploads with stats and user info</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {uploadHistoryLoading ? (
+                  <p className="text-muted-foreground">Loading...</p>
+                ) : uploadHistory.length === 0 ? (
+                  <p className="text-muted-foreground">No uploads recorded yet</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>File</TableHead>
+                        <TableHead>Uploaded By</TableHead>
+                        <TableHead>Total Rows</TableHead>
+                        <TableHead>Inserted</TableHead>
+                        <TableHead>Updated</TableHead>
+                        <TableHead>Skipped</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {uploadHistory.map((record) => (
+                        <TableRow key={record.id}>
+                          <TableCell className="whitespace-nowrap">
+                            {format(new Date(record.created_at), "MMM d, yyyy h:mm a")}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={record.upload_type === "tempo" ? "default" : "secondary"}>
+                              {record.upload_type === "tempo" ? "TeMPO" : "Sendoso"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate text-sm">{record.file_name}</TableCell>
+                          <TableCell className="text-sm">{record.uploaded_by_email}</TableCell>
+                          <TableCell>{record.total_rows_in_file}</TableCell>
+                          <TableCell className="text-green-600 dark:text-green-400">{record.records_inserted}</TableCell>
+                          <TableCell className="text-blue-600 dark:text-blue-400">{record.records_updated}</TableCell>
+                          <TableCell className={record.records_skipped > 0 ? "text-amber-600 dark:text-amber-400" : ""}>{record.records_skipped}</TableCell>
+                          <TableCell>
+                            {record.error_message ? (
+                              <Badge variant="destructive">Error</Badge>
+                            ) : (
+                              <Badge className="bg-green-600 hover:bg-green-700">Success</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </main>
     </div>
