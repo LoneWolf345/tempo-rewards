@@ -673,13 +673,31 @@ export default function Admin() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="sendoso-csv">Select CSV File</Label>
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                      sendosoDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                    }`}
+                    onDragEnter={(e) => { e.preventDefault(); setSendosoDragActive(true); }}
+                    onDragOver={(e) => { e.preventDefault(); setSendosoDragActive(true); }}
+                    onDragLeave={(e) => { e.preventDefault(); setSendosoDragActive(false); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setSendosoDragActive(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) handleSendosoUpload(file);
+                    }}
+                    onClick={() => document.getElementById("sendoso-csv")?.click()}
+                  >
+                    <Upload className={`mx-auto h-8 w-8 mb-2 ${sendosoDragActive ? "text-primary" : "text-muted-foreground"}`} />
+                    <p className="text-sm text-muted-foreground">
+                      {sendosoDragActive ? "Drop the file here..." : "Drag and drop a CSV file here, or click to select"}
+                    </p>
                     <Input
                       id="sendoso-csv"
                       type="file"
                       accept=".csv"
-                      onChange={handleSendosoUpload}
+                      className="hidden"
+                      onChange={handleSendosoFileSelect}
                       disabled={isUploading}
                     />
                   </div>
