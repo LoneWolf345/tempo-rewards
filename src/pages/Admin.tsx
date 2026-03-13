@@ -326,8 +326,7 @@ export default function Admin() {
     e.target.value = "";
   };
 
-  const handleSendosoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleSendosoUpload = async (file: File) => {
     if (!file || !user) return;
 
     setSendosoUploadError(null);
