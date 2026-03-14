@@ -63,7 +63,7 @@ export default function Auth() {
     const password = formData.get("password") as string;
     const fullName = formData.get("fullName") as string;
 
-    if (!validateEmail(email)) {
+    if (!validateSignUpEmail(email)) {
       setIsLoading(false);
       return;
     }
