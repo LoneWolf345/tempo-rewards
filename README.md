@@ -71,3 +71,44 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+---
+
+## Docker Deployment (OpenShift)
+
+This project includes a multi-stage `Dockerfile` that builds the app and serves it with `vite preview` on port 8080.
+
+### Build
+
+```sh
+docker build \
+  --build-arg VITE_SUPABASE_PROJECT_ID="your-project-id" \
+  --build-arg VITE_SUPABASE_PUBLISHABLE_KEY="your-anon-key" \
+  --build-arg VITE_SUPABASE_URL="https://your-project-id.supabase.co" \
+  -t tempo-rewards:latest .
+```
+
+### Run
+
+```sh
+docker run -p 8080:8080 tempo-rewards:latest
+```
+
+### Deployment Flow
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant Docker as Docker Build
+    participant Registry as Container Registry
+    participant OCP as OpenShift
+
+    Dev->>Docker: docker build --build-arg VITE_*
+    Docker->>Docker: npm install & npm run build (Stage 1)
+    Docker->>Docker: Copy dist + vite preview (Stage 2)
+    Docker-->>Dev: Image tagged
+    Dev->>Registry: docker push tempo-rewards:latest
+    Registry-->>OCP: Pull image
+    OCP->>OCP: Run container (UID 1001, port 8080)
+    OCP-->>Dev: App live at route
+```
