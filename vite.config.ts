@@ -21,6 +21,7 @@ export default defineConfig(async ({ mode }) => {
     preview: {
       host: "::",
       port: 8080,
+      allowedHosts: true,
     },
     plugins: [react(), ...conditionalPlugins],
     resolve: {
