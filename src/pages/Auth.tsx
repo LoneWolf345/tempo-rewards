@@ -13,9 +13,17 @@ export default function Auth() {
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
-  const validateEmail = (email: string) => {
+  const validateSignUpEmail = (email: string) => {
     if (!email.endsWith("@corp.cableone.net")) {
       toast.error("Email must end with @corp.cableone.net");
+      return false;
+    }
+    return true;
+  };
+
+  const validateSignInEmail = (email: string) => {
+    if (!email.endsWith("@corp.cableone.net") && !email.endsWith("@cableone.biz")) {
+      toast.error("Email must end with @corp.cableone.net or @cableone.biz");
       return false;
     }
     return true;
@@ -29,7 +37,7 @@ export default function Auth() {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    if (!validateEmail(email)) {
+    if (!validateSignInEmail(email)) {
       setIsLoading(false);
       return;
     }
@@ -55,7 +63,7 @@ export default function Auth() {
     const password = formData.get("password") as string;
     const fullName = formData.get("fullName") as string;
 
-    if (!validateEmail(email)) {
+    if (!validateSignUpEmail(email)) {
       setIsLoading(false);
       return;
     }
