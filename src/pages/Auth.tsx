@@ -37,7 +37,7 @@ export default function Auth() {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    if (!validateEmail(email)) {
+    if (!validateSignInEmail(email)) {
       setIsLoading(false);
       return;
     }
