@@ -1,82 +1,131 @@
-# Welcome to your Lovable project
+# TeMPO Rewards Tracker
 
-## Project info
+Reconcile technician upsell submissions against gift card reward fulfillments.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue?style=flat-square&logo=typescript)
+![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react)
+![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=flat-square&logo=vite)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?style=flat-square&logo=tailwindcss)
 
-## How can I edit this code?
+## Overview
 
-There are several ways of editing your application.
+TeMPO Rewards Tracker is an internal tool for Cableone operations teams that reconciles technician upsell submissions (from the TeMPO system) against gift card fulfillments (from Sendoso). It surfaces mismatches—missing rewards, unmatched records, amount discrepancies—so administrators can ensure every technician gets paid correctly. Technicians use the same app in a read-only capacity to check their reward status.
 
-**Use Lovable**
+## Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- **Restricted authentication** — email/password login locked to `@corp.cableone.net` domain
+- **Role-based access control** — separate admin and technician experiences via a dedicated `user_roles` table with Postgres RLS
+- **CSV upload & validation** — admins bulk-import TeMPO submission and Sendoso fulfillment data with column mapping and error handling
+- **Automated reconciliation** — 1:1 and subset-sum (group) matching algorithms to pair submissions with rewards
+- **Technician dashboard** — per-user view with status pipeline, search, sort, and filtering
+- **Admin emulation** — "view as" mode lets admins see exactly what a specific technician sees
+- **Upload audit trail** — every import is logged with row counts, skipped/updated records, and uploader identity
+- **OpenShift-ready deployment** — multi-stage Docker build serving the SPA via `vite preview` on port 8080
 
-Changes made via Lovable will be committed automatically to this repo.
+## Tech Stack
 
-**Use your preferred IDE**
+| Layer          | Technology                                                         |
+| -------------- | ------------------------------------------------------------------ |
+| Language       | TypeScript 5.8                                                     |
+| UI Framework   | React 18, React Router 6                                           |
+| Styling        | Tailwind CSS 3, shadcn/ui (Radix primitives)                      |
+| State / Data   | TanStack React Query, React Hook Form, Zod                        |
+| Charts         | Recharts                                                           |
+| Backend        | Supabase (Postgres, Auth, Row-Level Security, Edge Functions)      |
+| Build          | Vite 5, SWC                                                       |
+| Testing        | Vitest, Testing Library                                            |
+| Infrastructure | Docker (multi-stage), OpenShift (arbitrary UID, port 8080)         |
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Getting Started
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Prerequisites
 
-Follow these steps:
+| Tool   | Version | Notes                                   |
+| ------ | ------- | --------------------------------------- |
+| Node.js | ≥ 22   | Required by Dockerfile; LTS recommended |
+| npm    | ≥ 9    | Ships with Node 22                      |
+
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
+cd tempo-rewards
+npm install
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Environment Variables
 
-# Step 3: Install the necessary dependencies.
-npm i
+Create a `.env` file in the project root (see `.env.example`):
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+| Variable                         | Required | Description                                      |
+| -------------------------------- | -------- | ------------------------------------------------ |
+| `VITE_SUPABASE_PROJECT_ID`       | Yes      | Supabase project identifier                      |
+| `VITE_SUPABASE_PUBLISHABLE_KEY`  | Yes      | Supabase anon/public API key                     |
+| `VITE_SUPABASE_URL`              | Yes      | Supabase API base URL (`https://<id>.supabase.co`) |
+
+All three are inlined by Vite at build time and must also be passed as `--build-arg` during Docker builds.
+
+### Running Locally
+
+```sh
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The dev server starts at `http://localhost:8080` with HMR enabled.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Testing
 
-**Use GitHub Codespaces**
+```sh
+npm test            # single run
+npm run test:watch  # watch mode
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Usage
 
-## What technologies are used for this project?
+1. **Sign in** at `/auth` with your `@corp.cableone.net` email.
+2. **Technicians** land on `/dashboard` and see their submissions, matched rewards, and current status pipeline.
+3. **Admins** access `/admin` to upload TeMPO and Sendoso CSV files, trigger reconciliation, manage users, and review upload history.
+4. Admins can **emulate** any technician to debug their view without switching accounts.
 
-This project is built with:
+## Project Structure
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```
+├── public/                  # Static assets (favicon, robots.txt)
+├── src/
+│   ├── components/
+│   │   ├── ui/              # shadcn/ui primitives (button, card, dialog, etc.)
+│   │   ├── EmulationBanner.tsx
+│   │   ├── NavLink.tsx
+│   │   └── ProtectedRoute.tsx
+│   ├── contexts/
+│   │   └── EmulationContext.tsx   # Admin "view-as" state
+│   ├── hooks/
+│   │   ├── useAuth.tsx           # Auth provider & helpers
+│   │   └── use-mobile.tsx        # Responsive breakpoint hook
+│   ├── integrations/
+│   │   └── supabase/             # Auto-generated client & types
+│   ├── lib/
+│   │   ├── statusStyles.ts       # Status badge color mapping
+│   │   └── utils.ts              # Shared utilities (cn, etc.)
+│   ├── pages/
+│   │   ├── Admin.tsx             # Admin panel (uploads, reconciliation, user mgmt)
+│   │   ├── Auth.tsx              # Sign-in / sign-up
+│   │   ├── Dashboard.tsx         # Technician dashboard
+│   │   └── NotFound.tsx
+│   ├── App.tsx                   # Router & provider tree
+│   └── main.tsx                  # Entry point
+├── supabase/
+│   └── config.toml               # Supabase project config
+├── Dockerfile                    # Multi-stage build for OpenShift
+├── .dockerignore
+├── .env.example
+├── vite.config.ts
+└── package.json
+```
 
-## How can I deploy this project?
+## Deployment
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
-
----
-
-## Docker Deployment (OpenShift)
-
-This project includes a multi-stage `Dockerfile` that builds the app and serves it with `vite preview` on port 8080.
+This project ships as a Docker image designed for OpenShift but compatible with any container runtime.
 
 ### Build
 
@@ -93,6 +142,8 @@ docker build \
 ```sh
 docker run -p 8080:8080 tempo-rewards:latest
 ```
+
+The container runs as UID 1001 with OpenShift arbitrary-UID support. `vite preview` serves the SPA on port 8080 and handles client-side routing natively.
 
 ### Deployment Flow
 
@@ -112,3 +163,7 @@ sequenceDiagram
     OCP->>OCP: Run container (UID 1001, port 8080)
     OCP-->>Dev: App live at route
 ```
+
+## License
+
+No license file found in this repository.
