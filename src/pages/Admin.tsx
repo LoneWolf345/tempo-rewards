@@ -568,10 +568,22 @@ export default function Admin() {
         }
       }
 
+      // Deduplicate inserts by transaction_id — keep the last (most recent) row
+      const deduped = new Map<string, typeof toInsert[0]>();
+      const noTxnId: typeof toInsert = [];
+      for (const row of toInsert) {
+        if (row.transaction_id) {
+          deduped.set(row.transaction_id, row);
+        } else {
+          noTxnId.push(row);
+        }
+      }
+      const dedupedInserts = [...deduped.values(), ...noTxnId];
+
       // Batch insert new records
       const chunkSize = 500;
-      for (let j = 0; j < toInsert.length; j += chunkSize) {
-        const chunk = toInsert.slice(j, j + chunkSize);
+      for (let j = 0; j < dedupedInserts.length; j += chunkSize) {
+        const chunk = dedupedInserts.slice(j, j + chunkSize);
         const { error } = await supabase.from("sendoso_records").insert(chunk);
         if (error) throw error;
       }
