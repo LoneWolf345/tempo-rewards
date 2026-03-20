@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
 import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye, X, History, Clock, Download } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 import { useEmulation } from "@/contexts/EmulationContext";
 
@@ -992,7 +992,7 @@ export default function Admin() {
                             <TableCell>{submission.technician_email}</TableCell>
                             <TableCell>{submission.technician_name}</TableCell>
                             <TableCell>${Number(submission.upsell_amount).toFixed(2)}</TableCell>
-                            <TableCell>{format(new Date(submission.submission_date), "MMM d, yyyy")}</TableCell>
+                            <TableCell>{format(parseISO(submission.submission_date), "MMM d, yyyy")}</TableCell>
                             <TableCell>
                               <Badge className={getStatusStyles(submission.status)}>{submission.status}</Badge>
                             </TableCell>
@@ -1062,8 +1062,8 @@ export default function Admin() {
                             <TableCell>{record.technician_email}</TableCell>
                             <TableCell>{record.technician_name}</TableCell>
                             <TableCell>${Number(record.reward_amount).toFixed(2)}</TableCell>
-                            <TableCell>{format(new Date(record.fulfillment_date), "MMM d, yyyy")}</TableCell>
-                            <TableCell>{record.expiry_date ? format(new Date(record.expiry_date), "MMM d, yyyy") : "—"}</TableCell>
+                            <TableCell>{format(parseISO(record.fulfillment_date), "MMM d, yyyy")}</TableCell>
+                            <TableCell>{record.expiry_date ? format(parseISO(record.expiry_date), "MMM d, yyyy") : "—"}</TableCell>
                             <TableCell>
                               <Badge className={getStatusStyles(record.status)}>{record.status}</Badge>
                             </TableCell>

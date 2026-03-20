@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { LogOut, FileText, Gift, AlertTriangle, DollarSign, ChevronDown, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Search, Check, Clock, HelpCircle, Info } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 
 interface TempoSubmission {
@@ -139,7 +139,7 @@ export default function Dashboard() {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
 
   const matchRecords = (tempoRecords: TempoSubmission[], rewardRecords: RewardRecord[]): MatchedRow[] => {
-    const sortedTempo = [...tempoRecords].sort((a, b) => new Date(a.submission_date).getTime() - new Date(b.submission_date).getTime());
+    const sortedTempo = [...tempoRecords].sort((a, b) => parseISO(a.submission_date).getTime() - parseISO(b.submission_date).getTime());
     const usedRewards = new Set<string>();
     const usedTempo = new Set<string>();
     const rows: MatchedRow[] = [];
@@ -148,12 +148,12 @@ export default function Dashboard() {
     for (const t of sortedTempo) {
       let bestReward: RewardRecord | null = null;
       let bestDiff = Infinity;
-      const tDate = new Date(t.submission_date).getTime();
+      const tDate = parseISO(t.submission_date).getTime();
 
       for (const r of rewardRecords) {
         if (usedRewards.has(r.id)) continue;
         if (Math.abs(Number(t.upsell_amount) - r.amount) > 0.01) continue;
-        const rDate = new Date(r.date).getTime();
+        const rDate = parseISO(r.date).getTime();
         const diff = rDate - tDate;
         if (diff >= 0 && diff <= 45 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
           bestDiff = diff;
@@ -175,7 +175,7 @@ export default function Dashboard() {
     const findSubsetSum = (items: TempoSubmission[], target: number, rewardDate: number): TempoSubmission[] | null => {
       const FORTY_FIVE_DAYS = 45 * 24 * 60 * 60 * 1000;
       const eligible = items.filter(t => {
-        const diff = rewardDate - new Date(t.submission_date).getTime();
+        const diff = rewardDate - parseISO(t.submission_date).getTime();
         return diff >= 0 && diff <= FORTY_FIVE_DAYS;
       });
 
@@ -196,7 +196,7 @@ export default function Dashboard() {
     const groupUsedTempo = new Set<string>();
     for (const r of unmatchedRewards) {
       const availableTempo = unmatchedTempo.filter(t => !groupUsedTempo.has(t.id));
-      const subset = findSubsetSum(availableTempo, r.amount, new Date(r.date).getTime());
+      const subset = findSubsetSum(availableTempo, r.amount, parseISO(r.date).getTime());
       if (subset) {
         subset.forEach(t => groupUsedTempo.add(t.id));
         usedRewards.add(r.id);
@@ -220,8 +220,8 @@ export default function Dashboard() {
 
     // Sort: most recent first
     rows.sort((a, b) => {
-      const dateA = a.tempoRecords?.[0] ? new Date(a.tempoRecords[0].submission_date).getTime() : new Date(a.rewardRecord!.date).getTime();
-      const dateB = b.tempoRecords?.[0] ? new Date(b.tempoRecords[0].submission_date).getTime() : new Date(b.rewardRecord!.date).getTime();
+      const dateA = a.tempoRecords?.[0] ? parseISO(a.tempoRecords[0].submission_date).getTime() : parseISO(a.rewardRecord!.date).getTime();
+      const dateB = b.tempoRecords?.[0] ? parseISO(b.tempoRecords[0].submission_date).getTime() : parseISO(b.rewardRecord!.date).getTime();
       return dateB - dateA;
     });
 
@@ -280,8 +280,8 @@ export default function Dashboard() {
     }
 
     for (const entry of map.values()) {
-      entry.tempoRecords.sort((a, b) => new Date(b.submission_date).getTime() - new Date(a.submission_date).getTime());
-      entry.rewardRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      entry.tempoRecords.sort((a, b) => parseISO(b.submission_date).getTime() - parseISO(a.submission_date).getTime());
+      entry.rewardRecords.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
       entry.difference = entry.tempoTotal - entry.rewardTotal;
       entry.matchedRows = matchRecords(entry.tempoRecords, entry.rewardRecords);
       const hasUnmatchedRows = entry.matchedRows.some(row => !row.isMatched);
@@ -642,11 +642,11 @@ export default function Dashboard() {
                                                 row.isGroupMatch ? (
                                                   <div className="flex flex-col gap-0.5">
                                                     {row.tempoRecords.map((t, i) => (
-                                                      <span key={i}>{format(new Date(t.submission_date), "MMM d, yyyy")}</span>
+                                                      <span key={i}>{format(parseISO(t.submission_date), "MMM d, yyyy")}</span>
                                                     ))}
                                                   </div>
                                                 ) : (
-                                                  format(new Date(row.tempoRecords[0].submission_date), "MMM d, yyyy")
+                                                  format(parseISO(row.tempoRecords[0].submission_date), "MMM d, yyyy")
                                                 )
                                               ) : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
@@ -665,7 +665,7 @@ export default function Dashboard() {
                                               )}
                                             </TableCell>
                                             <TableCell>
-                                              {row.rewardRecord ? format(new Date(row.rewardRecord.date), "MMM d, yyyy") : <span className="text-muted-foreground">—</span>}
+                                              {row.rewardRecord ? format(parseISO(row.rewardRecord.date), "MMM d, yyyy") : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
                                             <TableCell>
                                               {row.rewardRecord ? (
