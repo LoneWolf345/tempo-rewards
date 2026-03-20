@@ -992,7 +992,7 @@ export default function Admin() {
                             <TableCell>{submission.technician_email}</TableCell>
                             <TableCell>{submission.technician_name}</TableCell>
                             <TableCell>${Number(submission.upsell_amount).toFixed(2)}</TableCell>
-                            <TableCell>{format(new Date(submission.submission_date), "MMM d, yyyy")}</TableCell>
+                            <TableCell>{format(parseISO(submission.submission_date), "MMM d, yyyy")}</TableCell>
                             <TableCell>
                               <Badge className={getStatusStyles(submission.status)}>{submission.status}</Badge>
                             </TableCell>
