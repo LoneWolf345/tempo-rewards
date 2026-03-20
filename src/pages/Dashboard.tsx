@@ -646,7 +646,7 @@ export default function Dashboard() {
                                                     ))}
                                                   </div>
                                                 ) : (
-                                                  format(new Date(row.tempoRecords[0].submission_date), "MMM d, yyyy")
+                                                  format(parseISO(row.tempoRecords[0].submission_date), "MMM d, yyyy")
                                                 )
                                               ) : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
