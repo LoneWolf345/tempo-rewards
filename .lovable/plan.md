@@ -1,27 +1,44 @@
 
 
-## Fix Data Reconciliation Bugs
+## Rewrite Matching Logic: Oldest-First, No Time Limit, Group TeMPO → Reward
 
-### Bug 1: "Expired and Credited" status not recognized
-**File:** `src/pages/Dashboard.tsx` (line ~374)
+### Summary
 
-The pipeline status counter checks for `"expired"` or `"credited"` as separate strings, but the actual Sendoso data contains `"Expired and Credited"` as one value. Fix: add `st === "expired and credited"` to the condition.
+Replace the current two-pass matching algorithm with a simpler, more accurate approach: process TeMPO submissions oldest-first, match each to the earliest available reward (same technician, on or after the submission date), and allow multiple TeMPO submissions to group against a single larger reward.
 
-Also affects 71 records / $2,450 that currently vanish from the status pipeline.
+### Current Behavior
 
-### Bug 2: 14-day matching window too narrow
-**File:** `src/pages/Dashboard.tsx` (lines ~158, ~176–179)
+- Pass 1: 1:1 exact-amount match within a 45-day window
+- Pass 2: Subset-sum grouping of TeMPO records against unmatched rewards (also 45-day window)
+- Pre-Sendoso TeMPO records with inline gift card codes are self-matched (stays the same)
 
-Sendoso batches rewards on a roughly weekly/biweekly cycle. Real data shows fulfillment routinely 15–30 days after TeMPO submission. The current 14-day window misses these, creating false "mismatch" statuses.
+### New Algorithm
 
-**Fix:** Widen the matching window from 14 days to 45 days. This covers the observed batch cadence with margin, while still preventing spurious cross-month matches.
+Per technician (same email), after self-matching pre-Sendoso records:
 
-### Changes
+1. **Sort** TeMPO submissions by `submission_date` ascending (oldest first)
+2. **Sort** rewards by date ascending
+3. **Pass 1 — 1:1 exact match**: For each unmatched TeMPO, find the earliest unmatched reward with the same amount, dated on or after the submission date. No time limit.
+4. **Pass 2 — Group TeMPO → one reward**: For each unmatched reward (sorted by date ascending), find a combination of unmatched TeMPO submissions (all dated on or before the reward date) whose amounts sum to the reward amount. This covers Sendoso batching multiple submissions into one payout.
+5. **Leftovers**: Any remaining unmatched TeMPO or rewards become unmatched rows.
 
-**`src/pages/Dashboard.tsx`:**
-1. In `matchRecords` Pass 1 (line ~158): change `14 * 24 * 60 * 60 * 1000` to `45 * 24 * 60 * 60 * 1000`.
-2. In `findSubsetSum` (line ~176): same change from 14 to 45 days.
-3. In `statusCounts` (line ~374): add `|| st === "expired and credited"` to the expired/credited check.
+### Key Differences from Current
 
-No database changes needed.
+| Aspect | Current | New |
+|--------|---------|-----|
+| Time window | 45-day cap | No limit (reward must be same day or later) |
+| Direction check | `reward_date - tempo_date >= 0` | Same — reward must be on or after |
+| Group direction | TeMPO → reward | Same — multiple TeMPO summing to one reward |
+| Processing order | Sorted but best-diff selected | Strictly oldest TeMPO first, earliest reward first |
+
+### File Changes
+
+**`src/pages/Dashboard.tsx`** — `matchRecords` function (lines ~141-228):
+
+1. Remove the 45-day constant and window checks from Pass 1 (line 158). Replace with: `diff >= 0` (reward date on or after submission date).
+2. Remove the 45-day window from `findSubsetSum` (lines 176-180). Replace eligible filter with: `rewardDate >= tempoDate` (i.e. `diff >= 0`).
+3. In Pass 2, iterate unmatched rewards oldest-first (sort ascending before grouping loop).
+4. No changes to self-matching of pre-Sendoso inline gift card codes (lines 248-260) — those remain auto-matched.
+
+No database changes needed. No other files affected.
 
