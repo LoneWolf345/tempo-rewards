@@ -636,7 +636,7 @@ export default function Dashboard() {
                                         </TableRow>
                                       ) : (
                                         summary.matchedRows.map((row, idx) => (
-                                          <TableRow key={idx} className={!row.isMatched ? "bg-destructive/5" : row.isGroupMatch ? "bg-blue-50 dark:bg-blue-950/20" : ""}>
+                                          <TableRow key={idx} className={!row.isMatched ? "bg-destructive/5" : ""}>
                                             <TableCell>
                                               {row.tempoRecords && row.tempoRecords.length > 0 ? (
                                                 row.isGroupMatch ? (
