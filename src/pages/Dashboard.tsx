@@ -642,7 +642,7 @@ export default function Dashboard() {
                                                 row.isGroupMatch ? (
                                                   <div className="flex flex-col gap-0.5">
                                                     {row.tempoRecords.map((t, i) => (
-                                                      <span key={i}>{format(new Date(t.submission_date), "MMM d, yyyy")}</span>
+                                                      <span key={i}>{format(parseISO(t.submission_date), "MMM d, yyyy")}</span>
                                                     ))}
                                                   </div>
                                                 ) : (
