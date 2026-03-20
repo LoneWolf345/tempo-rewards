@@ -676,9 +676,14 @@ export default function Dashboard() {
                                             </TableCell>
                                             <TableCell>
                                               {row.isMatched && row.isGroupMatch ? (
-                                                <Badge className="bg-blue-600 text-white border-transparent">
-                                                  <Check className="mr-1 h-3 w-3" />Grouped
-                                                </Badge>
+                                                <span className="flex items-center gap-1">
+                                                  <Badge className="bg-green-600 text-white border-transparent">
+                                                    <Check className="mr-1 h-3 w-3" />Matched
+                                                  </Badge>
+                                                  <Badge className="bg-blue-600 text-white border-transparent">
+                                                    Grouped
+                                                  </Badge>
+                                                </span>
                                               ) : row.isMatched ? (
                                                 <Badge className="bg-green-600 text-white border-transparent">
                                                   <Check className="mr-1 h-3 w-3" />Matched
