@@ -196,7 +196,7 @@ export default function Dashboard() {
     const groupUsedTempo = new Set<string>();
     for (const r of unmatchedRewards) {
       const availableTempo = unmatchedTempo.filter(t => !groupUsedTempo.has(t.id));
-      const subset = findSubsetSum(availableTempo, r.amount, new Date(r.date).getTime());
+      const subset = findSubsetSum(availableTempo, r.amount, parseISO(r.date).getTime());
       if (subset) {
         subset.forEach(t => groupUsedTempo.add(t.id));
         usedRewards.add(r.id);
