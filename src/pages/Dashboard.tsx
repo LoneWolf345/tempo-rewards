@@ -636,7 +636,7 @@ export default function Dashboard() {
                                         </TableRow>
                                       ) : (
                                         summary.matchedRows.map((row, idx) => (
-                                          <TableRow key={idx} className={!row.isMatched ? "bg-destructive/5" : row.isGroupMatch ? "bg-blue-50 dark:bg-blue-950/20" : ""}>
+                                          <TableRow key={idx} className={!row.isMatched ? "bg-destructive/5" : ""}>
                                             <TableCell>
                                               {row.tempoRecords && row.tempoRecords.length > 0 ? (
                                                 row.isGroupMatch ? (
@@ -675,15 +675,10 @@ export default function Dashboard() {
                                               ) : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
                                             <TableCell>
-                                              {row.isMatched && row.isGroupMatch ? (
-                                                <span className="flex items-center gap-1">
-                                                  <Badge className="bg-green-600 text-white border-transparent">
-                                                    <Check className="mr-1 h-3 w-3" />Matched
-                                                  </Badge>
-                                                  <Badge className="bg-blue-600 text-white border-transparent">
-                                                    Grouped
-                                                  </Badge>
-                                                </span>
+                                              {row.isMatched ? (
+                                                <Badge className="bg-green-600 text-white border-transparent">
+                                                  <Check className="mr-1 h-3 w-3" />Matched
+                                                </Badge>
                                               ) : row.isMatched ? (
                                                 <Badge className="bg-green-600 text-white border-transparent">
                                                   <Check className="mr-1 h-3 w-3" />Matched
