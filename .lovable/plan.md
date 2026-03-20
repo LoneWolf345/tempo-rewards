@@ -1,44 +1,35 @@
 
 
-## Rewrite Matching Logic: Oldest-First, No Time Limit, Group TeMPO → Reward
+## Fix Greedy Matching: Maximize Overall Matches
 
-### Summary
+### Problem
 
-Replace the current two-pass matching algorithm with a simpler, more accurate approach: process TeMPO submissions oldest-first, match each to the earliest available reward (same technician, on or after the submission date), and allow multiple TeMPO submissions to group against a single larger reward.
+Pass 1 greedily consumes all possible 1:1 exact matches before Pass 2 runs grouping. This can leave an odd number of TeMPO records for grouping, stranding both a TeMPO submission and a larger reward as unmatched — even though pairing them in a group would have produced a better overall result.
 
-### Current Behavior
+In the screenshot: 7 Sep 3 TeMPOs ($25 each) + 5 rewards (mix of $25 and $50). Pass 1 takes 2 for 1:1 $25 matches → 5 left → only 2 pairs possible → 1 TeMPO + 1 $50 reward stranded.
 
-- Pass 1: 1:1 exact-amount match within a 45-day window
-- Pass 2: Subset-sum grouping of TeMPO records against unmatched rewards (also 45-day window)
-- Pre-Sendoso TeMPO records with inline gift card codes are self-matched (stays the same)
+### Solution
 
-### New Algorithm
+Add a **Pass 3** after the current Pass 1 and Pass 2: attempt to "reclaim" 1:1 matches to resolve remaining unmatched pairs.
 
-Per technician (same email), after self-matching pre-Sendoso records:
+**Algorithm:**
 
-1. **Sort** TeMPO submissions by `submission_date` ascending (oldest first)
-2. **Sort** rewards by date ascending
-3. **Pass 1 — 1:1 exact match**: For each unmatched TeMPO, find the earliest unmatched reward with the same amount, dated on or after the submission date. No time limit.
-4. **Pass 2 — Group TeMPO → one reward**: For each unmatched reward (sorted by date ascending), find a combination of unmatched TeMPO submissions (all dated on or before the reward date) whose amounts sum to the reward amount. This covers Sendoso batching multiple submissions into one payout.
-5. **Leftovers**: Any remaining unmatched TeMPO or rewards become unmatched rows.
+After Pass 2, if there are still unmatched TeMPO records AND unmatched rewards:
+1. For each unmatched reward, check if combining an unmatched TeMPO with a TeMPO currently used in a 1:1 match (same amount, valid date) would sum to the reward amount.
+2. If so, break the 1:1 match — move that TeMPO into a new group with the unmatched TeMPO, matched to the unmatched reward.
+3. The $25 Sendoso reward freed by breaking the 1:1 match becomes unmatched (or re-attempt matching it to remaining unmatched TeMPOs).
 
-### Key Differences from Current
+This is simpler and safer than reordering passes, since it only reclaims when it produces a net improvement (reduces total unmatched count).
 
-| Aspect | Current | New |
-|--------|---------|-----|
-| Time window | 45-day cap | No limit (reward must be same day or later) |
-| Direction check | `reward_date - tempo_date >= 0` | Same — reward must be on or after |
-| Group direction | TeMPO → reward | Same — multiple TeMPO summing to one reward |
-| Processing order | Sorted but best-diff selected | Strictly oldest TeMPO first, earliest reward first |
+### File Change
 
-### File Changes
+**`src/pages/Dashboard.tsx`** — `matchRecords` function (~line 203, after Pass 2):
 
-**`src/pages/Dashboard.tsx`** — `matchRecords` function (lines ~141-228):
+Insert a Pass 3 block that:
+1. Collects still-unmatched TeMPO and rewards after Pass 2
+2. For each unmatched reward, scans existing 1:1 matched rows to find a "donor" TeMPO that, combined with an unmatched TeMPO, sums to the reward amount (with valid dates)
+3. If found: removes the 1:1 row from `rows`, creates a new grouped row, and pushes the freed reward back for re-matching
+4. Repeats until no more reclaims are possible
 
-1. Remove the 45-day constant and window checks from Pass 1 (line 158). Replace with: `diff >= 0` (reward date on or after submission date).
-2. Remove the 45-day window from `findSubsetSum` (lines 176-180). Replace eligible filter with: `rewardDate >= tempoDate` (i.e. `diff >= 0`).
-3. In Pass 2, iterate unmatched rewards oldest-first (sort ascending before grouping loop).
-4. No changes to self-matching of pre-Sendoso inline gift card codes (lines 248-260) — those remain auto-matched.
-
-No database changes needed. No other files affected.
+No database changes. No other files affected.
 
