@@ -155,7 +155,7 @@ export default function Dashboard() {
         if (Math.abs(Number(t.upsell_amount) - r.amount) > 0.01) continue;
         const rDate = parseISO(r.date).getTime();
         const diff = rDate - tDate;
-        if (diff >= 0 && diff <= 45 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
+        if (diff >= 0 && diff < bestDiff) {
           bestDiff = diff;
           bestReward = r;
         }
@@ -170,13 +170,11 @@ export default function Dashboard() {
 
     // Pass 2: Group match — find subsets of unmatched submissions that sum to an unmatched reward
     const unmatchedTempo = sortedTempo.filter(t => !usedTempo.has(t.id));
-    const unmatchedRewards = rewardRecords.filter(r => !usedRewards.has(r.id));
+    const unmatchedRewards = rewardRecords.filter(r => !usedRewards.has(r.id)).sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
     const findSubsetSum = (items: TempoSubmission[], target: number, rewardDate: number): TempoSubmission[] | null => {
-      const FORTY_FIVE_DAYS = 45 * 24 * 60 * 60 * 1000;
       const eligible = items.filter(t => {
-        const diff = rewardDate - parseISO(t.submission_date).getTime();
-        return diff >= 0 && diff <= FORTY_FIVE_DAYS;
+        return rewardDate >= parseISO(t.submission_date).getTime();
       });
 
       // Simple recursive subset search (safe for small per-technician lists)
