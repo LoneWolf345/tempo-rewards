@@ -153,7 +153,7 @@ export default function Dashboard() {
       for (const r of rewardRecords) {
         if (usedRewards.has(r.id)) continue;
         if (Math.abs(Number(t.upsell_amount) - r.amount) > 0.01) continue;
-        const rDate = new Date(r.date).getTime();
+        const rDate = parseISO(r.date).getTime();
         const diff = rDate - tDate;
         if (diff >= 0 && diff <= 45 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
           bestDiff = diff;
