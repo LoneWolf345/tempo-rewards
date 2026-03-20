@@ -170,7 +170,7 @@ export default function Dashboard() {
 
     // Pass 2: Group match — find subsets of unmatched submissions that sum to an unmatched reward
     const unmatchedTempo = sortedTempo.filter(t => !usedTempo.has(t.id));
-    const unmatchedRewards = rewardRecords.filter(r => !usedRewards.has(r.id));
+    const unmatchedRewards = rewardRecords.filter(r => !usedRewards.has(r.id)).sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
     const findSubsetSum = (items: TempoSubmission[], target: number, rewardDate: number): TempoSubmission[] | null => {
       const eligible = items.filter(t => {
