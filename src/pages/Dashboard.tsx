@@ -220,8 +220,8 @@ export default function Dashboard() {
 
     // Sort: most recent first
     rows.sort((a, b) => {
-      const dateA = a.tempoRecords?.[0] ? new Date(a.tempoRecords[0].submission_date).getTime() : new Date(a.rewardRecord!.date).getTime();
-      const dateB = b.tempoRecords?.[0] ? new Date(b.tempoRecords[0].submission_date).getTime() : new Date(b.rewardRecord!.date).getTime();
+      const dateA = a.tempoRecords?.[0] ? parseISO(a.tempoRecords[0].submission_date).getTime() : parseISO(a.rewardRecord!.date).getTime();
+      const dateB = b.tempoRecords?.[0] ? parseISO(b.tempoRecords[0].submission_date).getTime() : parseISO(b.rewardRecord!.date).getTime();
       return dateB - dateA;
     });
 
