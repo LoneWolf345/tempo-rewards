@@ -139,7 +139,7 @@ export default function Dashboard() {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
 
   const matchRecords = (tempoRecords: TempoSubmission[], rewardRecords: RewardRecord[]): MatchedRow[] => {
-    const sortedTempo = [...tempoRecords].sort((a, b) => new Date(a.submission_date).getTime() - new Date(b.submission_date).getTime());
+    const sortedTempo = [...tempoRecords].sort((a, b) => parseISO(a.submission_date).getTime() - parseISO(b.submission_date).getTime());
     const usedRewards = new Set<string>();
     const usedTempo = new Set<string>();
     const rows: MatchedRow[] = [];
