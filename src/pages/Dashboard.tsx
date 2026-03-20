@@ -280,8 +280,8 @@ export default function Dashboard() {
     }
 
     for (const entry of map.values()) {
-      entry.tempoRecords.sort((a, b) => new Date(b.submission_date).getTime() - new Date(a.submission_date).getTime());
-      entry.rewardRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      entry.tempoRecords.sort((a, b) => parseISO(b.submission_date).getTime() - parseISO(a.submission_date).getTime());
+      entry.rewardRecords.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
       entry.difference = entry.tempoTotal - entry.rewardTotal;
       entry.matchedRows = matchRecords(entry.tempoRecords, entry.rewardRecords);
       const hasUnmatchedRows = entry.matchedRows.some(row => !row.isMatched);
