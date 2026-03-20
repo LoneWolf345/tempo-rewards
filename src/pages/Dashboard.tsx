@@ -155,7 +155,7 @@ export default function Dashboard() {
         if (Math.abs(Number(t.upsell_amount) - r.amount) > 0.01) continue;
         const rDate = new Date(r.date).getTime();
         const diff = rDate - tDate;
-        if (diff >= 0 && diff <= 14 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
+        if (diff >= 0 && diff <= 45 * 24 * 60 * 60 * 1000 && diff < bestDiff) {
           bestDiff = diff;
           bestReward = r;
         }
@@ -173,10 +173,10 @@ export default function Dashboard() {
     const unmatchedRewards = rewardRecords.filter(r => !usedRewards.has(r.id));
 
     const findSubsetSum = (items: TempoSubmission[], target: number, rewardDate: number): TempoSubmission[] | null => {
-      const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
+      const FORTY_FIVE_DAYS = 45 * 24 * 60 * 60 * 1000;
       const eligible = items.filter(t => {
         const diff = rewardDate - new Date(t.submission_date).getTime();
-        return diff >= 0 && diff <= FOURTEEN_DAYS;
+        return diff >= 0 && diff <= FORTY_FIVE_DAYS;
       });
 
       // Simple recursive subset search (safe for small per-technician lists)
@@ -371,7 +371,7 @@ export default function Dashboard() {
       if (!tempoEmailSet.has(s.technician_email.toLowerCase())) continue;
       const st = s.status.toLowerCase();
       const amt = Number(s.reward_amount);
-      if (st === "expired" || st === "credited") { counts["expired/credited"].count++; counts["expired/credited"].amount += amt; }
+      if (st === "expired" || st === "credited" || st === "expired and credited") { counts["expired/credited"].count++; counts["expired/credited"].amount += amt; }
       else if (st in counts) { counts[st].count++; counts[st].amount += amt; }
     }
     return counts;
