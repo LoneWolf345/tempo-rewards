@@ -371,7 +371,7 @@ export default function Dashboard() {
       if (!tempoEmailSet.has(s.technician_email.toLowerCase())) continue;
       const st = s.status.toLowerCase();
       const amt = Number(s.reward_amount);
-      if (st === "expired" || st === "credited") { counts["expired/credited"].count++; counts["expired/credited"].amount += amt; }
+      if (st === "expired" || st === "credited" || st === "expired and credited") { counts["expired/credited"].count++; counts["expired/credited"].amount += amt; }
       else if (st in counts) { counts[st].count++; counts[st].amount += amt; }
     }
     return counts;
