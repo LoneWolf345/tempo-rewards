@@ -148,7 +148,7 @@ export default function Dashboard() {
     for (const t of sortedTempo) {
       let bestReward: RewardRecord | null = null;
       let bestDiff = Infinity;
-      const tDate = new Date(t.submission_date).getTime();
+      const tDate = parseISO(t.submission_date).getTime();
 
       for (const r of rewardRecords) {
         if (usedRewards.has(r.id)) continue;
