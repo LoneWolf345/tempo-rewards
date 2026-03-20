@@ -568,10 +568,22 @@ export default function Admin() {
         }
       }
 
+      // Deduplicate inserts by transaction_id — keep the last (most recent) row
+      const deduped = new Map<string, typeof toInsert[0]>();
+      const noTxnId: typeof toInsert = [];
+      for (const row of toInsert) {
+        if (row.transaction_id) {
+          deduped.set(row.transaction_id, row);
+        } else {
+          noTxnId.push(row);
+        }
+      }
+      const dedupedInserts = [...deduped.values(), ...noTxnId];
+
       // Batch insert new records
       const chunkSize = 500;
-      for (let j = 0; j < toInsert.length; j += chunkSize) {
-        const chunk = toInsert.slice(j, j + chunkSize);
+      for (let j = 0; j < dedupedInserts.length; j += chunkSize) {
+        const chunk = dedupedInserts.slice(j, j + chunkSize);
         const { error } = await supabase.from("sendoso_records").insert(chunk);
         if (error) throw error;
       }
@@ -585,7 +597,7 @@ export default function Admin() {
         if (error) throw error;
       }
 
-      let summary = `Imported ${toInsert.length} new, updated ${toUpdate.length} existing`;
+      let summary = `Imported ${dedupedInserts.length} new, updated ${toUpdate.length} existing`;
       if (skippedRows.length > 0) {
         const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
         setSendosoUploadError(`${summary}, but ${skippedRows.length} rows were skipped:\n${details}`);
