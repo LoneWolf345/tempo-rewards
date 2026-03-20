@@ -597,7 +597,7 @@ export default function Admin() {
         if (error) throw error;
       }
 
-      let summary = `Imported ${toInsert.length} new, updated ${toUpdate.length} existing`;
+      let summary = `Imported ${dedupedInserts.length} new, updated ${toUpdate.length} existing`;
       if (skippedRows.length > 0) {
         const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
         setSendosoUploadError(`${summary}, but ${skippedRows.length} rows were skipped:\n${details}`);
