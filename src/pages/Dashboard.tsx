@@ -665,7 +665,7 @@ export default function Dashboard() {
                                               )}
                                             </TableCell>
                                             <TableCell>
-                                              {row.rewardRecord ? format(new Date(row.rewardRecord.date), "MMM d, yyyy") : <span className="text-muted-foreground">—</span>}
+                                              {row.rewardRecord ? format(parseISO(row.rewardRecord.date), "MMM d, yyyy") : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
                                             <TableCell>
                                               {row.rewardRecord ? (
