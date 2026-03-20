@@ -202,6 +202,59 @@ export default function Dashboard() {
       }
     }
 
+    // Pass 3: Reclaim — break 1:1 matches to enable group matches and reduce overall unmatched count
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const stillUnmatchedTempo = sortedTempo.filter(t => !usedTempo.has(t.id) && !groupUsedTempo.has(t.id));
+      const stillUnmatchedRewards = rewardRecords.filter(r => !usedRewards.has(r.id)).sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+
+      if (stillUnmatchedTempo.length === 0 || stillUnmatchedRewards.length === 0) break;
+
+      for (const ur of stillUnmatchedRewards) {
+        const urDate = parseISO(ur.date).getTime();
+        let found = false;
+
+        for (const ut of stillUnmatchedTempo) {
+          if (urDate < parseISO(ut.submission_date).getTime()) continue;
+          const needed = ur.amount - Number(ut.upsell_amount);
+          if (needed <= 0.01) continue;
+
+          // Find a 1:1 matched row whose TeMPO has the needed amount and valid date
+          const donorIdx = rows.findIndex(row =>
+            row.isMatched && !row.isGroupMatch && row.tempoRecords?.length === 1 && row.rewardRecord &&
+            Math.abs(Number(row.tempoRecords[0].upsell_amount) - needed) <= 0.01 &&
+            urDate >= parseISO(row.tempoRecords[0].submission_date).getTime()
+          );
+
+          if (donorIdx !== -1) {
+            const donorRow = rows[donorIdx];
+            const donorTempo = donorRow.tempoRecords![0];
+            const freedReward = donorRow.rewardRecord!;
+
+            // Remove the 1:1 row
+            rows.splice(donorIdx, 1);
+            usedTempo.delete(donorTempo.id);
+            usedRewards.delete(freedReward.id);
+
+            // Create group match: unmatched TeMPO + donor TeMPO → unmatched reward
+            usedTempo.add(donorTempo.id);
+            usedTempo.add(ut.id);
+            groupUsedTempo.add(donorTempo.id);
+            groupUsedTempo.add(ut.id);
+            usedRewards.add(ur.id);
+            rows.push({ tempoRecords: [ut, donorTempo], rewardRecord: ur, isMatched: true, isGroupMatch: true });
+
+            // The freed reward goes back to unmatched pool (will be picked up next iteration or remain unmatched)
+            changed = true;
+            found = true;
+            break;
+          }
+        }
+        if (found) break; // restart the loop with fresh unmatched lists
+      }
+    }
+
     // Add remaining unmatched tempo
     for (const t of sortedTempo) {
       if (!usedTempo.has(t.id) && !groupUsedTempo.has(t.id)) {
