@@ -409,12 +409,10 @@ export default function Dashboard() {
     // Debug: log unmatched state after all passes
     const finalUnmatchedRewards = rewardRecords.filter(r => !usedRewards.has(r.id));
     const finalUnmatchedTempo = sortedTempo.filter(t => !usedTempo.has(t.id) && !groupUsedTempo.has(t.id));
-    if (finalUnmatchedRewards.length > 0 || finalUnmatchedTempo.length > 0) {
+    if (import.meta.env.DEV && (finalUnmatchedRewards.length > 0 || finalUnmatchedTempo.length > 0)) {
       console.log('[Matching Debug]', {
         unmatchedRewards: finalUnmatchedRewards.map(r => ({ id: r.id, amount: r.amount, date: r.date })),
         unmatchedTempo: finalUnmatchedTempo.map(t => ({ id: t.id, amount: t.upsell_amount, date: t.submission_date })),
-        totalRows: rows.length,
-        usedRewardsSize: usedRewards.size,
       });
     }
 
