@@ -188,8 +188,9 @@ export default function Dashboard() {
     const candidates: { tempo: TempoSubmission; reward: RewardRecord; gap: number }[] = [];
     for (const t of sortedTempo) {
       const tDate = parseISO(t.submission_date).getTime();
+      const targetAmount = t.expected_reward_amount != null ? Number(t.expected_reward_amount) : Number(t.upsell_amount);
       for (const r of rewardRecords) {
-        if (Math.abs(Number(t.upsell_amount) - r.amount) > 0.01) continue;
+        if (Math.abs(targetAmount - r.amount) > 0.01) continue;
         const gap = parseISO(r.date).getTime() - tDate;
         if (gap >= 0) candidates.push({ tempo: t, reward: r, gap });
       }
