@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye, X, History, Clock, Download, DollarSign } from "lucide-react";
+import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye, X, History, Clock, Download, DollarSign, Pencil, Check } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, parseISO } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 import { useEmulation } from "@/contexts/EmulationContext";
@@ -74,6 +75,7 @@ interface TempoSubmission {
   technician_email: string;
   technician_name: string;
   upsell_amount: number;
+  expected_reward_amount: number | null;
   submission_date: string;
   status: string;
   uploaded_at: string;
@@ -157,6 +159,11 @@ export default function Admin() {
   const [adjustmentLoading, setAdjustmentLoading] = useState(false);
   const [adjustmentUploadError, setAdjustmentUploadError] = useState<string | null>(null);
   const [adjustmentDragActive, setAdjustmentDragActive] = useState(false);
+
+  // Override edit state
+  const [editingOverrideId, setEditingOverrideId] = useState<string | null>(null);
+  const [overrideValue, setOverrideValue] = useState("");
+  const [overrideUploadError, setOverrideUploadError] = useState<string | null>(null);
 
   // Upload history state
   const [uploadHistory, setUploadHistory] = useState<UploadHistoryRecord[]>([]);
@@ -788,6 +795,103 @@ export default function Admin() {
     e.target.value = "";
   };
 
+  const saveOverride = async (id: string) => {
+    const val = overrideValue.trim();
+    const numVal = val === "" ? null : parseFloat(val);
+    if (val !== "" && (isNaN(numVal!) || numVal! <= 0)) {
+      toast.error("Enter a valid positive amount or leave blank to clear");
+      return;
+    }
+    const { error } = await supabase
+      .from("tempo_submissions")
+      .update({ expected_reward_amount: numVal })
+      .eq("id", id);
+    if (error) {
+      toast.error("Failed to save override");
+    } else {
+      toast.success(numVal ? `Override set to $${numVal.toFixed(2)}` : "Override cleared");
+      setEditingOverrideId(null);
+      fetchTempoPage();
+    }
+  };
+
+  const handleOverrideCsvUpload = async (file: File) => {
+    if (!file || !user) return;
+    setOverrideUploadError(null);
+    setIsUploading(true);
+    try {
+      const text = await file.text();
+      const lines = text.split("\n").filter((l) => l.trim());
+      const delimiter = lines[0].includes("\t") ? "\t" : ",";
+      const headers = parseCSVLine(lines[0], delimiter).map((h) => h.toLowerCase().trim());
+
+      const emailIdx = headers.findIndex((h) => h.includes("email"));
+      const dateIdx = headers.findIndex((h) => h.includes("date"));
+      const amountIdx = headers.findIndex((h) => h === "amount" || h === "upsell_amount");
+      const overrideIdx = headers.findIndex((h) => h.includes("expected") || h.includes("override"));
+
+      if (overrideIdx === -1) {
+        setOverrideUploadError("CSV must contain an 'expected_reward_amount' column");
+        setIsUploading(false);
+        return;
+      }
+      if (emailIdx === -1 || dateIdx === -1 || amountIdx === -1) {
+        setOverrideUploadError("CSV must contain email, date, and amount columns to identify records");
+        setIsUploading(false);
+        return;
+      }
+
+      let updated = 0;
+      const skipped: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const vals = parseCSVLine(lines[i], delimiter);
+        const email = vals[emailIdx]?.trim();
+        const dateVal = extractDate(vals[dateIdx] || "");
+        const amt = parseFloat(vals[amountIdx]);
+        const overrideAmt = vals[overrideIdx]?.trim() === "" ? null : parseFloat(vals[overrideIdx]);
+
+        if (!email || !isValidDate(dateVal) || isNaN(amt)) {
+          skipped.push(`Row ${i + 1}: invalid data`);
+          continue;
+        }
+        if (overrideAmt !== null && isNaN(overrideAmt)) {
+          skipped.push(`Row ${i + 1}: invalid override amount`);
+          continue;
+        }
+
+        const { error, count } = await supabase
+          .from("tempo_submissions")
+          .update({ expected_reward_amount: overrideAmt })
+          .ilike("technician_email", email)
+          .eq("submission_date", dateVal)
+          .eq("upsell_amount", amt);
+
+        if (error) {
+          skipped.push(`Row ${i + 1}: ${error.message}`);
+        } else if (count === 0) {
+          skipped.push(`Row ${i + 1}: no matching TeMPO record found`);
+        } else {
+          updated += count || 1;
+        }
+      }
+
+      if (skipped.length > 0) {
+        const details = skipped.slice(0, 10).join("\n") + (skipped.length > 10 ? `\n...and ${skipped.length - 10} more` : "");
+        setOverrideUploadError(`Updated ${updated} records, ${skipped.length} rows skipped:\n${details}`);
+      }
+
+      await logUpload({ upload_type: "override", file_name: file.name, total_rows_in_file: lines.length - 1, records_inserted: 0, records_updated: updated, records_skipped: skipped.length });
+      toast.success(`Updated ${updated} override(s)`);
+      fetchTempoPage();
+    } catch (error: any) {
+      const msg = error?.message || "Unknown error";
+      setOverrideUploadError(`Failed: ${msg}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const toggleUserActive = async (profile: Profile) => {
     const { error } = await supabase
       .from("profiles")
@@ -1116,22 +1220,73 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
-          {/* TeMPO Records Tab */}
           <TabsContent value="tempo">
             <Card>
               <CardHeader>
                 <CardTitle>All TeMPO Submissions</CardTitle>
                 <CardDescription>Complete list of upsell submissions</CardDescription>
-                <div className="relative mt-2 max-w-sm">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by email..."
-                    value={tempoSearchInput}
-                    onChange={(e) => setTempoSearchInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { setTempoSearch(tempoSearchInput); setTempoPage(0); } }}
-                    className="pl-9"
-                  />
+                <div className="flex items-center gap-4 mt-2">
+                  <div className="relative max-w-sm flex-1">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by email..."
+                      value={tempoSearchInput}
+                      onChange={(e) => setTempoSearchInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { setTempoSearch(tempoSearchInput); setTempoPage(0); } }}
+                      className="pl-9"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const csv = "technician_email,date,amount,expected_reward_amount\n";
+                        const blob = new Blob([csv], { type: "text/csv" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "override_template.csv";
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      <Download className="mr-1 h-3 w-3" />
+                      Override Template
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById("override-csv")?.click()}
+                      disabled={isUploading}
+                    >
+                      <Upload className="mr-1 h-3 w-3" />
+                      Bulk Set Overrides
+                    </Button>
+                    <Input
+                      id="override-csv"
+                      type="file"
+                      accept=".csv"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleOverrideCsvUpload(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </div>
                 </div>
+                {overrideUploadError && (
+                  <div className="rounded-md border border-destructive bg-destructive/10 p-3 mt-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <pre className="whitespace-pre-wrap text-sm text-destructive flex-1">{overrideUploadError}</pre>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setOverrideUploadError(null)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 {tempoLoading ? (
@@ -1146,6 +1301,7 @@ export default function Admin() {
                           <TableHead>Email</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead>Amount</TableHead>
+                          <TableHead>Expected Reward</TableHead>
                           <TableHead>Date</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
@@ -1156,6 +1312,55 @@ export default function Admin() {
                             <TableCell>{submission.technician_email}</TableCell>
                             <TableCell>{submission.technician_name}</TableCell>
                             <TableCell>${Number(submission.upsell_amount).toFixed(2)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                {submission.expected_reward_amount ? (
+                                  <Badge variant="secondary" className="font-mono text-xs">
+                                    → ${Number(submission.expected_reward_amount).toFixed(2)}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                                <Popover
+                                  open={editingOverrideId === submission.id}
+                                  onOpenChange={(open) => {
+                                    if (open) {
+                                      setEditingOverrideId(submission.id);
+                                      setOverrideValue(submission.expected_reward_amount ? String(submission.expected_reward_amount) : "");
+                                    } else {
+                                      setEditingOverrideId(null);
+                                    }
+                                  }}
+                                >
+                                  <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-56 p-3">
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Expected Reward Amount</Label>
+                                      <div className="flex gap-1">
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          min="0"
+                                          placeholder="e.g. 75"
+                                          value={overrideValue}
+                                          onChange={(e) => setOverrideValue(e.target.value)}
+                                          onKeyDown={(e) => { if (e.key === "Enter") saveOverride(submission.id); }}
+                                          className="h-8 text-sm"
+                                        />
+                                        <Button size="icon" className="h-8 w-8 shrink-0" onClick={() => saveOverride(submission.id)}>
+                                          <Check className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">Leave blank to clear override</p>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                            </TableCell>
                             <TableCell>{format(parseISO(submission.submission_date), "MMM d, yyyy")}</TableCell>
                             <TableCell>
                               <Badge className={getStatusStyles(submission.status)}>{submission.status}</Badge>
