@@ -813,18 +813,24 @@ export default function Dashboard() {
                                           <TableCell colSpan={5} className="text-center text-muted-foreground">No records</TableCell>
                                         </TableRow>
                                       ) : (
-                                        summary.matchedRows.map((row, idx) => (
+                                        summary.matchedRows.map((row, idx) => {
+                                          const allRewards = row.rewardRecords ?? (row.rewardRecord ? [row.rewardRecord] : []);
+                                          const isAdjustment = row.tempoRecords?.[0] && (row.tempoRecords[0] as any)._source === "Adjustment";
+                                          return (
                                           <TableRow key={idx} className={!row.isMatched ? "bg-destructive/5" : ""}>
                                             <TableCell>
                                               {row.tempoRecords && row.tempoRecords.length > 0 ? (
-                                                row.isGroupMatch ? (
+                                                row.isGroupMatch && row.tempoRecords.length > 1 ? (
                                                   <div className="flex flex-col gap-0.5">
                                                     {row.tempoRecords.map((t, i) => (
                                                       <span key={i}>{format(parseISO(t.submission_date), "MMM d, yyyy")}</span>
                                                     ))}
                                                   </div>
                                                 ) : (
-                                                  format(parseISO(row.tempoRecords[0].submission_date), "MMM d, yyyy")
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span>{format(parseISO(row.tempoRecords[0].submission_date), "MMM d, yyyy")}</span>
+                                                    {isAdjustment && <Badge className="bg-teal-600 text-white border-transparent text-[10px] px-1.5 py-0">Adjustment</Badge>}
+                                                  </div>
                                                 )
                                               ) : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
@@ -839,21 +845,33 @@ export default function Dashboard() {
                                                   </span>
                                                 </div>
                                               ) : (
-                                                <span>${(row.tempoRecords?.[0] ? Number(row.tempoRecords[0].upsell_amount) : row.rewardRecord!.amount).toFixed(2)}</span>
+                                                <span>${(row.tempoRecords?.[0] ? Number(row.tempoRecords[0].upsell_amount) : allRewards[0]?.amount ?? 0).toFixed(2)}</span>
                                               )}
                                             </TableCell>
                                             <TableCell>
-                                              {row.rewardRecord ? format(parseISO(row.rewardRecord.date), "MMM d, yyyy") : <span className="text-muted-foreground">—</span>}
+                                              {allRewards.length > 1 ? (
+                                                <div className="flex flex-col gap-0.5">
+                                                  {allRewards.map((r, i) => (
+                                                    <span key={i}>{format(parseISO(r.date), "MMM d, yyyy")} <span className="text-muted-foreground text-xs">(${r.amount.toFixed(2)})</span></span>
+                                                  ))}
+                                                </div>
+                                              ) : allRewards.length === 1 ? (
+                                                format(parseISO(allRewards[0].date), "MMM d, yyyy")
+                                              ) : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
                                             <TableCell>
-                                              {row.rewardRecord ? (
-                                                <Badge className={
-                                                  row.rewardRecord.source === "TeMPO" ? "bg-purple-600 text-white border-transparent" :
-                                                  row.rewardRecord.source === "Adjustment" ? "bg-teal-600 text-white border-transparent" :
-                                                  "bg-orange-500 text-white border-transparent"
-                                                }>
-                                                  {row.rewardRecord.source}
-                                                </Badge>
+                                              {allRewards.length > 0 ? (
+                                                <div className="flex flex-col gap-0.5">
+                                                  {[...new Set(allRewards.map(r => r.source))].map((src, i) => (
+                                                    <Badge key={i} className={
+                                                      src === "TeMPO" ? "bg-purple-600 text-white border-transparent" :
+                                                      src === "Adjustment" ? "bg-teal-600 text-white border-transparent" :
+                                                      "bg-orange-500 text-white border-transparent"
+                                                    }>
+                                                      {src}{allRewards.length > 1 && ` (${allRewards.filter(r => r.source === src).length})`}
+                                                    </Badge>
+                                                  ))}
+                                                </div>
                                               ) : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
                                             <TableCell>
@@ -861,11 +879,7 @@ export default function Dashboard() {
                                                 <Badge className="bg-green-600 text-white border-transparent">
                                                   <Check className="mr-1 h-3 w-3" />Matched
                                                 </Badge>
-                                              ) : row.isMatched ? (
-                                                <Badge className="bg-green-600 text-white border-transparent">
-                                                  <Check className="mr-1 h-3 w-3" />Matched
-                                                </Badge>
-                                              ) : row.tempoRecords && row.tempoRecords.length > 0 && !row.rewardRecord ? (
+                                              ) : row.tempoRecords && row.tempoRecords.length > 0 && allRewards.length === 0 ? (
                                                 <Badge variant="outline" className="text-amber-600 border-amber-600">
                                                   <Clock className="mr-1 h-3 w-3" />Pending
                                                 </Badge>
@@ -876,7 +890,8 @@ export default function Dashboard() {
                                               )}
                                             </TableCell>
                                           </TableRow>
-                                        ))
+                                          );
+                                        })
                                       )}
                                     </TableBody>
                                   </Table>
