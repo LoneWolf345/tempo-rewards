@@ -391,11 +391,10 @@ export default function Admin() {
       const delimiter = firstLine.includes("\t") ? "\t" : ",";
       const headers = parseCSVLine(firstLine, delimiter).map((h) => h.toLowerCase());
 
-      console.log("[TeMPO Upload] Detected delimiter:", delimiter === "\t" ? "TAB" : "COMMA");
-      console.log("[TeMPO Upload] RAW first line:", firstLine);
-      console.log("[TeMPO Upload] RAW second line:", lines[1]);
-      console.log("[TeMPO Upload] Headers found:", headers);
-      console.log("[TeMPO Upload] Parsed data row:", parseCSVLine(lines[1], delimiter));
+      if (import.meta.env.DEV) {
+        console.log("[TeMPO Upload] Detected delimiter:", delimiter === "\t" ? "TAB" : "COMMA");
+        console.log("[TeMPO Upload] Headers found:", headers);
+      }
 
       const idIdx = headers.findIndex((h) => h === "id");
       const emailIdx = headers.findIndex((h) => h.includes("issued_to_email") || h.includes("email"));
