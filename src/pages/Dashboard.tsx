@@ -275,7 +275,7 @@ export default function Dashboard() {
             const remainingUnmatchedTempo = stillUnmatchedTempo.filter(t => t.id !== ut.id);
             const freedRewardDate = parseISO(freedReward.date).getTime();
             const canRematch = remainingUnmatchedTempo.some(t =>
-              Math.abs(Number(t.upsell_amount) - freedReward.amount) <= 0.01 &&
+              Math.abs((t.expected_reward_amount != null ? Number(t.expected_reward_amount) : Number(t.upsell_amount)) - freedReward.amount) <= 0.01 &&
               freedRewardDate >= parseISO(t.submission_date).getTime()
             );
 
