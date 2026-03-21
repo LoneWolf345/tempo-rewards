@@ -61,6 +61,7 @@ interface RewardRecord {
 interface MatchedRow {
   tempoRecords?: TempoSubmission[];
   rewardRecord?: RewardRecord;
+  rewardRecords?: RewardRecord[];
   isMatched: boolean;
   isGroupMatch?: boolean;
 }
@@ -237,7 +238,35 @@ export default function Dashboard() {
       }
     }
 
-    // Pass 3: Reclaim — break 1:1 matches to enable group matches and reduce overall unmatched count
+    // Pass 2b: Reverse group match — find subsets of unmatched rewards that sum to an unmatched TeMPO amount
+    const unmatchedTempoAfterP2 = sortedTempo.filter(t => !usedTempo.has(t.id) && !groupUsedTempo.has(t.id));
+    const unmatchedRewardsAfterP2 = rewardRecords.filter(r => !usedRewards.has(r.id));
+
+    const findRewardSubsetSum = (items: RewardRecord[], target: number, tempoDate: number): RewardRecord[] | null => {
+      const eligible = items.filter(r => parseISO(r.date).getTime() >= tempoDate);
+      const search = (idx: number, remaining: number, current: RewardRecord[]): RewardRecord[] | null => {
+        if (Math.abs(remaining) <= 0.01 && current.length > 1) return current;
+        if (idx >= eligible.length || remaining < -0.01) return null;
+        const withItem = search(idx + 1, remaining - eligible[idx].amount, [...current, eligible[idx]]);
+        if (withItem) return withItem;
+        return search(idx + 1, remaining, current);
+      };
+      return search(0, target, []);
+    };
+
+    const reverseGroupUsedRewards = new Set<string>();
+    for (const t of unmatchedTempoAfterP2) {
+      const targetAmount = t.expected_reward_amount != null ? Number(t.expected_reward_amount) : Number(t.upsell_amount);
+      const availableRewards = unmatchedRewardsAfterP2.filter(r => !reverseGroupUsedRewards.has(r.id));
+      const subset = findRewardSubsetSum(availableRewards, targetAmount, parseISO(t.submission_date).getTime());
+      if (subset) {
+        subset.forEach(r => { reverseGroupUsedRewards.add(r.id); usedRewards.add(r.id); });
+        usedTempo.add(t.id);
+        rows.push({ tempoRecords: [t], rewardRecords: subset, isMatched: true, isGroupMatch: true });
+      }
+    }
+
+
     // Guard: only reclaim if it produces a net reduction in total unmatched items
     let changed = true;
     while (changed) {
@@ -349,8 +378,10 @@ export default function Dashboard() {
 
     // Sort: most recent first
     rows.sort((a, b) => {
-      const dateA = a.tempoRecords?.[0] ? parseISO(a.tempoRecords[0].submission_date).getTime() : parseISO(a.rewardRecord!.date).getTime();
-      const dateB = b.tempoRecords?.[0] ? parseISO(b.tempoRecords[0].submission_date).getTime() : parseISO(b.rewardRecord!.date).getTime();
+      const allRewardsA = a.rewardRecords ?? (a.rewardRecord ? [a.rewardRecord] : []);
+      const allRewardsB = b.rewardRecords ?? (b.rewardRecord ? [b.rewardRecord] : []);
+      const dateA = a.tempoRecords?.[0] ? parseISO(a.tempoRecords[0].submission_date).getTime() : parseISO(allRewardsA[0]!.date).getTime();
+      const dateB = b.tempoRecords?.[0] ? parseISO(b.tempoRecords[0].submission_date).getTime() : parseISO(allRewardsB[0]!.date).getTime();
       return dateB - dateA;
     });
 
@@ -408,20 +439,24 @@ export default function Dashboard() {
       });
     }
 
-    // Include adjustments as virtual rewards
+    // Include adjustments as virtual TeMPO records (earned side)
     for (const adj of adjustments) {
       const key = adj.technician_email.toLowerCase();
       const entry = getOrCreate(key);
-      entry.rewardCount++;
-      entry.rewardTotal += Number(adj.amount);
-      entry.rewardRecords.push({
+      entry.tempoCount++;
+      entry.tempoTotal += Number(adj.amount);
+      entry.tempoRecords.push({
         id: adj.id,
-        email: key,
-        amount: Number(adj.amount),
-        date: adj.adjustment_date,
+        technician_email: adj.technician_email,
+        technician_name: adj.technician_name ?? "",
+        upsell_amount: Number(adj.amount),
+        submission_date: adj.adjustment_date,
         status: adj.adjustment_type,
-        source: "Adjustment",
-      });
+        gift_card_code: null,
+        uploaded_at: adj.uploaded_at,
+        expected_reward_amount: null,
+        _source: "Adjustment",
+      } as TempoSubmission & { _source: string });
     }
 
     for (const entry of map.values()) {
@@ -780,18 +815,24 @@ export default function Dashboard() {
                                           <TableCell colSpan={5} className="text-center text-muted-foreground">No records</TableCell>
                                         </TableRow>
                                       ) : (
-                                        summary.matchedRows.map((row, idx) => (
+                                        summary.matchedRows.map((row, idx) => {
+                                          const allRewards = row.rewardRecords ?? (row.rewardRecord ? [row.rewardRecord] : []);
+                                          const isAdjustment = row.tempoRecords?.[0] && (row.tempoRecords[0] as any)._source === "Adjustment";
+                                          return (
                                           <TableRow key={idx} className={!row.isMatched ? "bg-destructive/5" : ""}>
                                             <TableCell>
                                               {row.tempoRecords && row.tempoRecords.length > 0 ? (
-                                                row.isGroupMatch ? (
+                                                row.isGroupMatch && row.tempoRecords.length > 1 ? (
                                                   <div className="flex flex-col gap-0.5">
                                                     {row.tempoRecords.map((t, i) => (
                                                       <span key={i}>{format(parseISO(t.submission_date), "MMM d, yyyy")}</span>
                                                     ))}
                                                   </div>
                                                 ) : (
-                                                  format(parseISO(row.tempoRecords[0].submission_date), "MMM d, yyyy")
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span>{format(parseISO(row.tempoRecords[0].submission_date), "MMM d, yyyy")}</span>
+                                                    {isAdjustment && <Badge className="bg-teal-600 text-white border-transparent text-[10px] px-1.5 py-0">Adjustment</Badge>}
+                                                  </div>
                                                 )
                                               ) : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
@@ -806,21 +847,33 @@ export default function Dashboard() {
                                                   </span>
                                                 </div>
                                               ) : (
-                                                <span>${(row.tempoRecords?.[0] ? Number(row.tempoRecords[0].upsell_amount) : row.rewardRecord!.amount).toFixed(2)}</span>
+                                                <span>${(row.tempoRecords?.[0] ? Number(row.tempoRecords[0].upsell_amount) : allRewards[0]?.amount ?? 0).toFixed(2)}</span>
                                               )}
                                             </TableCell>
                                             <TableCell>
-                                              {row.rewardRecord ? format(parseISO(row.rewardRecord.date), "MMM d, yyyy") : <span className="text-muted-foreground">—</span>}
+                                              {allRewards.length > 1 ? (
+                                                <div className="flex flex-col gap-0.5">
+                                                  {allRewards.map((r, i) => (
+                                                    <span key={i}>{format(parseISO(r.date), "MMM d, yyyy")} <span className="text-muted-foreground text-xs">(${r.amount.toFixed(2)})</span></span>
+                                                  ))}
+                                                </div>
+                                              ) : allRewards.length === 1 ? (
+                                                format(parseISO(allRewards[0].date), "MMM d, yyyy")
+                                              ) : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
                                             <TableCell>
-                                              {row.rewardRecord ? (
-                                                <Badge className={
-                                                  row.rewardRecord.source === "TeMPO" ? "bg-purple-600 text-white border-transparent" :
-                                                  row.rewardRecord.source === "Adjustment" ? "bg-teal-600 text-white border-transparent" :
-                                                  "bg-orange-500 text-white border-transparent"
-                                                }>
-                                                  {row.rewardRecord.source}
-                                                </Badge>
+                                              {allRewards.length > 0 ? (
+                                                <div className="flex flex-col gap-0.5">
+                                                  {[...new Set(allRewards.map(r => r.source))].map((src, i) => (
+                                                    <Badge key={i} className={
+                                                      src === "TeMPO" ? "bg-purple-600 text-white border-transparent" :
+                                                      src === "Adjustment" ? "bg-teal-600 text-white border-transparent" :
+                                                      "bg-orange-500 text-white border-transparent"
+                                                    }>
+                                                      {src}{allRewards.length > 1 && ` (${allRewards.filter(r => r.source === src).length})`}
+                                                    </Badge>
+                                                  ))}
+                                                </div>
                                               ) : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
                                             <TableCell>
@@ -828,11 +881,7 @@ export default function Dashboard() {
                                                 <Badge className="bg-green-600 text-white border-transparent">
                                                   <Check className="mr-1 h-3 w-3" />Matched
                                                 </Badge>
-                                              ) : row.isMatched ? (
-                                                <Badge className="bg-green-600 text-white border-transparent">
-                                                  <Check className="mr-1 h-3 w-3" />Matched
-                                                </Badge>
-                                              ) : row.tempoRecords && row.tempoRecords.length > 0 && !row.rewardRecord ? (
+                                              ) : row.tempoRecords && row.tempoRecords.length > 0 && allRewards.length === 0 ? (
                                                 <Badge variant="outline" className="text-amber-600 border-amber-600">
                                                   <Clock className="mr-1 h-3 w-3" />Pending
                                                 </Badge>
@@ -843,7 +892,8 @@ export default function Dashboard() {
                                               )}
                                             </TableCell>
                                           </TableRow>
-                                        ))
+                                          );
+                                        })
                                       )}
                                     </TableBody>
                                   </Table>
