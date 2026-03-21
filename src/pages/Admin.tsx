@@ -91,6 +91,18 @@ interface SendosoRecord {
   transaction_id: string | null;
 }
 
+interface AdjustmentRecord {
+  id: string;
+  technician_email: string;
+  technician_name: string | null;
+  adjustment_type: string;
+  amount: number;
+  adjustment_date: string;
+  description: string | null;
+  uploaded_by: string;
+  uploaded_at: string;
+}
+
 interface UploadHistoryRecord {
   id: string;
   uploaded_by: string;
