@@ -446,7 +446,7 @@ export default function Dashboard() {
     }
 
     return Array.from(map.values());
-  }, [tempoSubmissions, sendosoRecords]);
+  }, [tempoSubmissions, sendosoRecords, adjustments]);
 
   const filteredAndSortedSummaries = useMemo(() => {
     let result = emailSummaries;
