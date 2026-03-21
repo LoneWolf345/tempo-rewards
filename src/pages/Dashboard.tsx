@@ -254,7 +254,8 @@ export default function Dashboard() {
 
         for (const ut of stillUnmatchedTempo) {
           if (urDate < parseISO(ut.submission_date).getTime()) continue;
-          const needed = ur.amount - Number(ut.upsell_amount);
+          const utAmount = ut.expected_reward_amount != null ? Number(ut.expected_reward_amount) : Number(ut.upsell_amount);
+          const needed = ur.amount - utAmount;
           if (needed <= 0.01) continue;
 
           // Find a 1:1 matched row whose TeMPO has the needed amount and valid date
