@@ -861,9 +861,9 @@ export default function Dashboard() {
                                                 format(parseISO(allRewards[0].date), "MMM d, yyyy")
                                               ) : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="w-[1%] whitespace-nowrap">
                                               {allRewards.length > 0 ? (
-                                                <div className="flex flex-col gap-0.5">
+                                                <div className="flex flex-col gap-0.5 items-start">
                                                   {[...new Set(allRewards.map(r => r.source))].map((src, i) => (
                                                     <Badge key={i} className={
                                                       src === "TeMPO" ? "bg-purple-600 text-white border-transparent" :
