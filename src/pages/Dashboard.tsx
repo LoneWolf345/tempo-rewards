@@ -111,7 +111,8 @@ export default function Dashboard() {
       if (error) throw error;
       if (!data || data.length === 0) break;
 
-      for (const row of data as T[]) {
+      const rows = data as unknown as T[];
+      for (const row of rows) {
         if (seenIds.has(row.id)) continue;
         seenIds.add(row.id);
         allRows.push(row);
