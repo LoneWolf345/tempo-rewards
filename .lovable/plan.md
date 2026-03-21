@@ -1,41 +1,50 @@
 
 
-## Bug: Unmatched Reward-Only Row Not Rendering
+## Rewrite Matching to Minimize Date Gaps (Human-Like Matching)
 
-### Root Cause
+### Problem
 
-The `matchRecords` function does correctly add unmatched reward-only rows (line 266-269) with `{ rewardRecord: r, isMatched: false }`. However, the rendering code at line 714-716 has a problem when displaying the **amount** for a reward-only row:
+The current Pass 1 iterates TeMPO records oldest-first and assigns each to the closest available reward. This per-record greedy approach doesn't optimize globally — an early TeMPO can "steal" a nearby reward, forcing a later TeMPO to match a far-away reward (e.g. Sep 17 → Feb 20), even though swapping assignments would produce tighter pairings overall.
 
-```tsx
-row.tempoRecords?.[0] ? Number(row.tempoRecords[0].upsell_amount) : row.rewardRecord!.amount
+A human matching by hand would scan all possible pairings and connect the closest dates first, regardless of which TeMPO came first.
+
+### Solution: Global Closest-Pair Strategy
+
+Replace the per-TeMPO greedy loop in Pass 1 with a global minimum-gap assignment:
+
+1. Generate all valid candidate pairs: every (TeMPO, reward) where amounts match and reward date ≥ submission date
+2. Sort candidates by date difference ascending (smallest gap first)
+3. Iterate through sorted candidates — if neither the TeMPO nor the reward is already used, match them
+
+This ensures the tightest date pairings are always selected first, exactly like a human would do.
+
+Passes 2 and 3 remain the same (group matching and reclaim).
+
+### File Change
+
+**`src/pages/Dashboard.tsx`** — `matchRecords` function, Pass 1 (lines 155-177):
+
+Replace the current per-TeMPO loop with:
+
+```
+// Pass 1: Exact 1:1 match — global closest-pair assignment
+const candidates: { tempo: TempoSubmission; reward: RewardRecord; gap: number }[] = [];
+for (const t of sortedTempo) {
+  const tDate = parseISO(t.submission_date).getTime();
+  for (const r of rewardRecords) {
+    if (Math.abs(Number(t.upsell_amount) - r.amount) > 0.01) continue;
+    const gap = parseISO(r.date).getTime() - tDate;
+    if (gap >= 0) candidates.push({ tempo: t, reward: r, gap });
+  }
+}
+candidates.sort((a, b) => a.gap - b.gap);
+for (const c of candidates) {
+  if (usedTempo.has(c.tempo.id) || usedRewards.has(c.reward.id)) continue;
+  usedTempo.add(c.tempo.id);
+  usedRewards.add(c.reward.id);
+  rows.push({ tempoRecords: [c.tempo], rewardRecord: c.reward, isMatched: true });
+}
 ```
 
-This part is fine. But the **real issue** is likely that the row is being produced but the Collapsible content inside a `<tr>/<td>` wrapper may not be expanding to show all rows, or there's a data issue where the 6th reward is already marked as used.
-
-To diagnose definitively, I need to verify the actual data. But more likely, the bug is in how the **sort** function handles reward-only rows at line 273-276: the `!` assertion `a.rewardRecord!` would crash silently if a row somehow has neither tempoRecords nor rewardRecord.
-
-However, the most probable cause: **Pass 3's reclaim logic is consuming the freed reward.** When Pass 3 breaks a 1:1 match, it frees a $25 reward. On the next iteration, `stillUnmatchedRewards` picks up this freed reward. If there happens to be another unmatched TeMPO + a 1:1 donor available, the freed reward gets re-matched — but if the numbers work out perfectly (5 TeMPO, 6 rewards), the freed reward from breaking one 1:1 gets re-used in a new 1:1 match to the same TeMPO. This means the 6th reward ends up used, and no unmatched row is ever created.
-
-**The actual fix**: After Pass 3 completes, re-run a simple Pass 1 step for any freed rewards against any remaining unmatched TeMPO. But more importantly — the freed reward at line 238 is deleted from `usedRewards`, but Pass 3 only creates group matches. The freed $25 reward is never re-added to `usedRewards` unless another iteration picks it up. If no more iterations run (because `stillUnmatchedTempo` is empty), the freed reward falls to line 266-269. So it should appear.
-
-**Alternative diagnosis**: The issue is that after the reclaim, the 5 original matches become 3 matches + 1 group, but the freed reward matches back via a new Pass 3 iteration to consume another 1:1 match — creating a chain reaction that ultimately matches all 6 rewards to the 5 TeMPO records. This would explain why all rows show "Matched" but the total is off by $25.
-
-### Proposed Fix
-
-Add a guard in `matchRecords`: after all passes, verify that the total TeMPO amount across matched rows does not exceed the actual TeMPO total. More practically:
-
-1. **In `matchRecords` (line ~205-256)**: After Pass 3, add a sanity check — if a reward was freed but could not be re-matched (no TeMPO available), ensure it appears as an unmatched row. The current loop at line 266-269 should handle this, but add a `console.log` for debugging to confirm whether the 6th reward is actually in `usedRewards` after Pass 3.
-
-2. **Add a temporary debug log** after line 256 to print `usedRewards.size`, `rows.length`, and the IDs of rewards not in `usedRewards`. This will confirm whether the bug is in the matching logic or the rendering.
-
-3. **If confirmed as a Pass 3 chain-reaction bug**: Add a constraint that Pass 3 should only reclaim if it results in a net reduction of unmatched items (i.e., track total unmatched before and after each reclaim, and revert if no improvement).
-
-### File Changes
-
-**`src/pages/Dashboard.tsx`**:
-- After Pass 3 (line ~256), add debug logging to trace whether the 6th reward ends up in `usedRewards`
-- Add a net-improvement guard to the Pass 3 reclaim loop: only allow a reclaim if `(unmatchedTempo - 1) + (unmatchedRewards - 1) < unmatchedTempo + unmatchedRewards` — which is always true, but also check that the freed reward doesn't get silently re-consumed without reducing the overall unmatched count
-- Ensure the freed reward from a reclaim is tracked separately so it either gets re-matched (reducing unmatched count) or definitely appears as an unmatched row
-
-No database changes needed.
+No other file changes. No database changes.
 
