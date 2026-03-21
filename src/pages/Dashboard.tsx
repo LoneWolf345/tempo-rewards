@@ -628,6 +628,14 @@ export default function Dashboard() {
     }, 0);
   }, [sendosoRecords]);
 
+  const latestRewardFulfillmentDate = useMemo(() => {
+    if (sendosoRecords.length === 0) return null;
+    return sendosoRecords.reduce((max, s) => {
+      const d = parseISO(s.fulfillment_date).getTime();
+      return d > max ? d : max;
+    }, 0);
+  }, [sendosoRecords]);
+
   const matchedCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "matched").length;
 
   const toggleExpand = (email: string) => {
@@ -1030,12 +1038,22 @@ export default function Dashboard() {
                                                   <Check className="mr-1 h-3 w-3" />Matched
                                                 </Badge>
                                               ) : row.tempoRecords && row.tempoRecords.length > 0 && allRewards.length === 0 ? (
-                                                <Badge variant="outline" className="text-amber-600 border-amber-600">
-                                                  <Clock className="mr-1 h-3 w-3" />Pending
-                                                </Badge>
+                                                (() => {
+                                                  const submissionDate = parseISO(row.tempoRecords[0].submission_date).getTime();
+                                                  const isRecent = latestRewardFulfillmentDate && submissionDate > latestRewardFulfillmentDate;
+                                                  return isRecent ? (
+                                                    <Badge variant="outline" className="text-amber-600 border-amber-600">
+                                                      <Clock className="mr-1 h-3 w-3" />Pending
+                                                    </Badge>
+                                                  ) : (
+                                                    <Badge variant="outline" className="text-orange-700 border-orange-700">
+                                                      <AlertTriangle className="mr-1 h-3 w-3" />Missed
+                                                    </Badge>
+                                                  );
+                                                })()
                                               ) : (
                                                 <Badge variant="outline" className="text-destructive border-destructive">
-                                                  <HelpCircle className="mr-1 h-3 w-3" />Unmatched
+                                                  <HelpCircle className="mr-1 h-3 w-3" />Overpayment
                                                 </Badge>
                                               )}
                                             </TableCell>
