@@ -303,7 +303,7 @@ export default function Dashboard() {
             // If the freed reward can be re-matched, do it now
             if (canRematch) {
               const rematchTempo = remainingUnmatchedTempo.find(t =>
-                Math.abs(Number(t.upsell_amount) - freedReward.amount) <= 0.01 &&
+                Math.abs((t.expected_reward_amount != null ? Number(t.expected_reward_amount) : Number(t.upsell_amount)) - freedReward.amount) <= 0.01 &&
                 freedRewardDate >= parseISO(t.submission_date).getTime()
               )!;
               usedTempo.add(rematchTempo.id);
