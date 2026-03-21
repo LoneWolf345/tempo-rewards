@@ -409,20 +409,24 @@ export default function Dashboard() {
       });
     }
 
-    // Include adjustments as virtual rewards
+    // Include adjustments as virtual TeMPO records (earned side)
     for (const adj of adjustments) {
       const key = adj.technician_email.toLowerCase();
       const entry = getOrCreate(key);
-      entry.rewardCount++;
-      entry.rewardTotal += Number(adj.amount);
-      entry.rewardRecords.push({
+      entry.tempoCount++;
+      entry.tempoTotal += Number(adj.amount);
+      entry.tempoRecords.push({
         id: adj.id,
-        email: key,
-        amount: Number(adj.amount),
-        date: adj.adjustment_date,
+        technician_email: adj.technician_email,
+        technician_name: adj.technician_name ?? "",
+        upsell_amount: Number(adj.amount),
+        submission_date: adj.adjustment_date,
         status: adj.adjustment_type,
-        source: "Adjustment",
-      });
+        gift_card_code: null,
+        uploaded_at: adj.uploaded_at,
+        expected_reward_amount: null,
+        _source: "Adjustment",
+      } as TempoSubmission & { _source: string });
     }
 
     for (const entry of map.values()) {
