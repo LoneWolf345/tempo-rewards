@@ -160,6 +160,11 @@ export default function Admin() {
   const [adjustmentUploadError, setAdjustmentUploadError] = useState<string | null>(null);
   const [adjustmentDragActive, setAdjustmentDragActive] = useState(false);
 
+  // Override edit state
+  const [editingOverrideId, setEditingOverrideId] = useState<string | null>(null);
+  const [overrideValue, setOverrideValue] = useState("");
+  const [overrideUploadError, setOverrideUploadError] = useState<string | null>(null);
+
   // Upload history state
   const [uploadHistory, setUploadHistory] = useState<UploadHistoryRecord[]>([]);
   const [uploadHistoryLoading, setUploadHistoryLoading] = useState(false);
