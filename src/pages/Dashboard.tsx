@@ -55,7 +55,7 @@ interface RewardRecord {
   amount: number;
   date: string;
   status: string;
-  source: "Sendoso" | "TeMPO";
+  source: "Sendoso" | "TeMPO" | "Adjustment";
 }
 
 interface MatchedRow {
