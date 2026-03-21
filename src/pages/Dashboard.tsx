@@ -86,6 +86,11 @@ export default function Dashboard() {
   const [tempoSubmissions, setTempoSubmissions] = useState<TempoSubmission[]>([]);
   const [sendosoRecords, setSendosoRecords] = useState<SendosoRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "mismatch" | "matched" | "balanced">("all");
+  const [sortColumn, setSortColumn] = useState<keyof EmailSummary | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [adjustments, setAdjustments] = useState<AdjustmentRecord[]>([]);
 
   useEffect(() => {
