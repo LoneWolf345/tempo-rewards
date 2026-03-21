@@ -1729,6 +1729,44 @@ export default function Admin() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings">
+            <Card>
+              <CardHeader>
+                <CardTitle>Expired Reward Reactivation Instructions</CardTitle>
+                <CardDescription>
+                  These instructions are shown to technicians when they view expired rewards on their dashboard. Each line becomes a bullet point.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {settingsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading...</p>
+                ) : (
+                  <>
+                    <Textarea
+                      value={reactivationInstructions}
+                      onChange={(e) => setReactivationInstructions(e.target.value)}
+                      rows={6}
+                      placeholder="Enter instructions, one per line..."
+                    />
+                    <div className="flex items-center gap-3">
+                      <Button
+                        onClick={saveReactivationInstructions}
+                        disabled={settingsSaving || reactivationInstructions === reactivationInstructionsOriginal}
+                      >
+                        <Save className="mr-2 h-4 w-4" />
+                        {settingsSaving ? "Saving..." : "Save Instructions"}
+                      </Button>
+                      {reactivationInstructions !== reactivationInstructionsOriginal && (
+                        <span className="text-sm text-muted-foreground">Unsaved changes</span>
+                      )}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </main>
     </div>
