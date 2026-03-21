@@ -831,7 +831,7 @@ export default function Dashboard() {
                                                 ) : (
                                                   <div className="flex items-center gap-1.5">
                                                     <span>{format(parseISO(row.tempoRecords[0].submission_date), "MMM d, yyyy")}</span>
-                                                    {isAdjustment && <Badge className="bg-teal-600 text-white border-transparent text-[10px] px-1.5 py-0">Adjustment</Badge>}
+                                                    {isAdjustment && <Badge className="bg-teal-600 text-white border-transparent text-[10px] px-1.5 py-0">{row.tempoRecords[0].status || "Adjustment"}</Badge>}
                                                   </div>
                                                 )
                                               ) : <span className="text-muted-foreground">—</span>}
