@@ -152,28 +152,22 @@ export default function Dashboard() {
     const usedTempo = new Set<string>();
     const rows: MatchedRow[] = [];
 
-    // Pass 1: Exact 1:1 match
+    // Pass 1: Exact 1:1 match — global closest-pair assignment
+    const candidates: { tempo: TempoSubmission; reward: RewardRecord; gap: number }[] = [];
     for (const t of sortedTempo) {
-      let bestReward: RewardRecord | null = null;
-      let bestDiff = Infinity;
       const tDate = parseISO(t.submission_date).getTime();
-
       for (const r of rewardRecords) {
-        if (usedRewards.has(r.id)) continue;
         if (Math.abs(Number(t.upsell_amount) - r.amount) > 0.01) continue;
-        const rDate = parseISO(r.date).getTime();
-        const diff = rDate - tDate;
-        if (diff >= 0 && diff < bestDiff) {
-          bestDiff = diff;
-          bestReward = r;
-        }
+        const gap = parseISO(r.date).getTime() - tDate;
+        if (gap >= 0) candidates.push({ tempo: t, reward: r, gap });
       }
-
-      if (bestReward) {
-        usedRewards.add(bestReward.id);
-        usedTempo.add(t.id);
-        rows.push({ tempoRecords: [t], rewardRecord: bestReward, isMatched: true });
-      }
+    }
+    candidates.sort((a, b) => a.gap - b.gap);
+    for (const c of candidates) {
+      if (usedTempo.has(c.tempo.id) || usedRewards.has(c.reward.id)) continue;
+      usedTempo.add(c.tempo.id);
+      usedRewards.add(c.reward.id);
+      rows.push({ tempoRecords: [c.tempo], rewardRecord: c.reward, isMatched: true });
     }
 
     // Pass 2: Group match — find subsets of unmatched submissions that sum to an unmatched reward
