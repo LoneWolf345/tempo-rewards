@@ -142,13 +142,32 @@ export default function Dashboard() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [tempoData, sendosoData] = await Promise.all([
+      const [tempoData, sendosoData, adjustmentData] = await Promise.all([
         fetchAllRows<TempoSubmission>("tempo_submissions", "submission_date"),
         fetchAllRows<SendosoRecord>("sendoso_records", "fulfillment_date"),
+        (async () => {
+          const allAdj: AdjustmentRecord[] = [];
+          let from = 0;
+          const pageSize = 1000;
+          while (true) {
+            const { data, error } = await supabase
+              .from("adjustments")
+              .select("*")
+              .order("adjustment_date", { ascending: false })
+              .range(from, from + pageSize - 1);
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+            allAdj.push(...(data as unknown as AdjustmentRecord[]));
+            if (data.length < pageSize) break;
+            from += pageSize;
+          }
+          return allAdj;
+        })(),
       ]);
 
       setTempoSubmissions(tempoData);
       setSendosoRecords(sendosoData);
+      setAdjustments(adjustmentData);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
