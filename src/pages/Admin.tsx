@@ -1253,6 +1253,150 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
+          {/* Adjustments Tab */}
+          <TabsContent value="adjustments">
+            <div className="space-y-6">
+              {/* Upload Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Upload Adjustments CSV
+                  </CardTitle>
+                  <CardDescription>
+                    Upload raffle winners, bonuses, or other special adjustments.
+                  </CardDescription>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const csv = "technician_email,technician_name,amount,date,type,description\n";
+                      const blob = new Blob([csv], { type: "text/csv" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "adjustments_template.csv";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <Download className="mr-1 h-3 w-3" />
+                    Download template
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                      adjustmentDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                    }`}
+                    onDragEnter={(e) => { e.preventDefault(); setAdjustmentDragActive(true); }}
+                    onDragOver={(e) => { e.preventDefault(); setAdjustmentDragActive(true); }}
+                    onDragLeave={(e) => { e.preventDefault(); setAdjustmentDragActive(false); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setAdjustmentDragActive(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) handleAdjustmentUpload(file);
+                    }}
+                    onClick={() => document.getElementById("adjustment-csv")?.click()}
+                  >
+                    <Upload className={`mx-auto h-8 w-8 mb-2 ${adjustmentDragActive ? "text-primary" : "text-muted-foreground"}`} />
+                    <p className="text-sm text-muted-foreground">
+                      {adjustmentDragActive ? "Drop the file here..." : "Drag and drop a CSV file here, or click to select"}
+                    </p>
+                    <Input
+                      id="adjustment-csv"
+                      type="file"
+                      accept=".csv"
+                      className="hidden"
+                      onChange={handleAdjustmentFileSelect}
+                      disabled={isUploading}
+                    />
+                  </div>
+                  {adjustmentUploadError && (
+                    <div className="rounded-md border border-destructive bg-destructive/10 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <pre className="whitespace-pre-wrap text-sm text-destructive flex-1">{adjustmentUploadError}</pre>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setAdjustmentUploadError(null)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Records Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Adjustments</CardTitle>
+                  <CardDescription>Raffle winners, bonuses, and other special adjustments</CardDescription>
+                  <div className="relative mt-2 max-w-sm">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by email..."
+                      value={adjustmentSearchInput}
+                      onChange={(e) => setAdjustmentSearchInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { setAdjustmentSearch(adjustmentSearchInput); setAdjustmentPage(0); } }}
+                      className="pl-9"
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {adjustmentLoading ? (
+                    <p className="text-muted-foreground">Loading...</p>
+                  ) : adjustmentRecords.length === 0 ? (
+                    <p className="text-muted-foreground">No adjustment records found</p>
+                  ) : (
+                    <>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Description</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {adjustmentRecords.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell>{record.technician_email}</TableCell>
+                              <TableCell>{record.technician_name || "—"}</TableCell>
+                              <TableCell>
+                                <Badge variant="secondary">{record.adjustment_type}</Badge>
+                              </TableCell>
+                              <TableCell>${Number(record.amount).toFixed(2)}</TableCell>
+                              <TableCell>{format(parseISO(record.adjustment_date), "MMM d, yyyy")}</TableCell>
+                              <TableCell className="max-w-[200px] truncate">{record.description || "—"}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      <div className="mt-4 flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          Showing {adjustmentPage * PAGE_SIZE + 1}–{Math.min((adjustmentPage + 1) * PAGE_SIZE, adjustmentTotal)} of {adjustmentTotal}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" disabled={adjustmentPage === 0} onClick={() => setAdjustmentPage(adjustmentPage - 1)}>
+                            <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                          </Button>
+                          <Button variant="outline" size="sm" disabled={(adjustmentPage + 1) * PAGE_SIZE >= adjustmentTotal} onClick={() => setAdjustmentPage(adjustmentPage + 1)}>
+                            Next <ChevronRight className="ml-1 h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
           {/* Upload History Tab */}
           <TabsContent value="history">
             <Card>
