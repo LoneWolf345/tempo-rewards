@@ -1,24 +1,34 @@
 
 
-## Fix: Group Amount Display Shows Wrong Math
+## Clickable Expired/Credited Pill with Reactivation Instructions
 
-### Problem
+### What It Does
 
-Line 881 displays grouped TeMPO amounts as `$X × N = $total`, where `$X` is taken from the **first** record only. When records in the group have different amounts (e.g., one $75 override and one $25 base), it shows `$75.00 × 2 = $100.00` — mathematically wrong because it assumes uniform amounts.
+Clicking the "Expired/Credited" pill in the status pipeline opens a panel below the pipeline showing all expired/credited rewards for the current technician (or emulated user). Each record shows the reward amount, fulfillment date, expiry date, and status. Below the list, static reactivation instructions guide the technician on next steps.
 
-### Fix
+### Changes
 
-**`src/pages/Dashboard.tsx`** (~lines 878-886):
+**`src/pages/Dashboard.tsx`**:
 
-Check if all TeMPO records in the group have the same effective amount:
-- **If uniform**: Keep current display: `$75.00 × 2 = $150.00`
-- **If mixed**: Show individual amounts summed, e.g. `$75.00 + $25.00 = $100.00`
+1. **State**: Add `showExpiredPanel` boolean toggle state.
 
-The total (line 884, via `reduce`) is already correct — only the label formula needs fixing.
+2. **Expired pill click handler**: Make the Expired/Credited pill clickable (`cursor-pointer`, hover effect). On click, toggle `showExpiredPanel`.
+
+3. **Expired rewards panel** (new section below the status pipeline, ~line 741): When `showExpiredPanel` is true, render a Card containing:
+   - A header: "Expired / Credited Rewards" with a close button
+   - A table listing all Sendoso records where status is "expired", "credited", or "expired and credited" for the current view (filtered by technician if non-admin)
+   - Columns: Technician (admin only), Amount, Fulfillment Date, Expiry Date, Status badge
+   - If no expired records: "No expired or credited rewards found"
+
+4. **Reactivation instructions**: Below the table, a styled info box with static instructions:
+   - Check your email for the original gift card link — it may still be redeemable
+   - If the link no longer works, contact Sendoso support with your transaction details
+   - Reach out to your program administrator to request a replacement reward
+   - Include your name, email, reward amount, and original fulfillment date in any request
 
 ### Files
 
 | File | Change |
 |------|--------|
-| `src/pages/Dashboard.tsx` | Fix group amount label to handle mixed amounts |
+| `src/pages/Dashboard.tsx` | Add clickable expired pill, expandable panel with reward list and reactivation instructions |
 
