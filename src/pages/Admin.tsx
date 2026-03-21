@@ -148,6 +148,16 @@ export default function Admin() {
   const [sendosoSearchInput, setSendosoSearchInput] = useState("");
   const [sendosoLoading, setSendosoLoading] = useState(false);
 
+  // Adjustments state
+  const [adjustmentRecords, setAdjustmentRecords] = useState<AdjustmentRecord[]>([]);
+  const [adjustmentTotal, setAdjustmentTotal] = useState(0);
+  const [adjustmentPage, setAdjustmentPage] = useState(0);
+  const [adjustmentSearch, setAdjustmentSearch] = useState("");
+  const [adjustmentSearchInput, setAdjustmentSearchInput] = useState("");
+  const [adjustmentLoading, setAdjustmentLoading] = useState(false);
+  const [adjustmentUploadError, setAdjustmentUploadError] = useState<string | null>(null);
+  const [adjustmentDragActive, setAdjustmentDragActive] = useState(false);
+
   // Upload history state
   const [uploadHistory, setUploadHistory] = useState<UploadHistoryRecord[]>([]);
   const [uploadHistoryLoading, setUploadHistoryLoading] = useState(false);
@@ -166,6 +176,7 @@ export default function Admin() {
       fetchBaseData();
       fetchTempoPage();
       fetchSendosoPage();
+      fetchAdjustmentPage();
       fetchUploadHistory();
     }
   }, [isAdmin]);
