@@ -23,6 +23,18 @@ interface TempoSubmission {
   status: string;
   gift_card_code: string | null;
   uploaded_at: string;
+  expected_reward_amount: number | null;
+}
+
+interface AdjustmentRecord {
+  id: string;
+  technician_email: string;
+  technician_name: string | null;
+  adjustment_type: string;
+  amount: number;
+  adjustment_date: string;
+  description: string | null;
+  uploaded_at: string;
 }
 
 interface SendosoRecord {
