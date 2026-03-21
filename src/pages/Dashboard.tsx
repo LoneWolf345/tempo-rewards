@@ -733,13 +733,83 @@ export default function Dashboard() {
             </div>
           ))}
           <div className="ml-2 flex flex-1 items-center gap-2">
-            <div className={`flex-1 rounded-lg border px-4 py-3 text-center ${getStatusStyles("expired")}`}>
+            <div
+              className={`flex-1 rounded-lg border px-4 py-3 text-center cursor-pointer ring-offset-background transition-all hover:ring-2 hover:ring-ring hover:ring-offset-2 ${getStatusStyles("expired")} ${showExpiredPanel ? "ring-2 ring-ring ring-offset-2" : ""}`}
+              onClick={() => setShowExpiredPanel(!showExpiredPanel)}
+              title="Click to view expired rewards and reactivation instructions"
+            >
               <div className="text-xs font-medium">Expired/Credited</div>
               <div className="text-xl font-bold">{statusCounts["expired/credited"].count}</div>
               <div className="text-xs opacity-80">${statusCounts["expired/credited"].amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             </div>
           </div>
         </div>
+
+        {/* Expired Rewards Panel */}
+        {showExpiredPanel && (() => {
+          const expiredRecords = sendosoRecords.filter(s => {
+            const st = s.status.toLowerCase();
+            return st === "expired" || st === "credited" || st === "expired and credited";
+          });
+          return (
+            <Card className="border-amber-500/30">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+                    Expired / Credited Rewards
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setShowExpiredPanel(false)}>✕</Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {expiredRecords.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No expired or credited rewards found.</p>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          {isAdmin && <TableHead>Technician</TableHead>}
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Fulfillment Date</TableHead>
+                          <TableHead>Expiry Date</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {expiredRecords.map(r => (
+                          <TableRow key={r.id}>
+                            {isAdmin && <TableCell className="text-sm">{r.technician_email}</TableCell>}
+                            <TableCell className="font-medium">${Number(r.reward_amount).toFixed(2)}</TableCell>
+                            <TableCell>{format(parseISO(r.fulfillment_date), "MMM d, yyyy")}</TableCell>
+                            <TableCell>{r.expiry_date ? format(parseISO(r.expiry_date), "MMM d, yyyy") : "—"}</TableCell>
+                            <TableCell><Badge className={getStatusStyles(r.status.toLowerCase())}>{r.status}</Badge></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold">How to Reactivate Expired Rewards</h4>
+                      <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
+                        <li>Check your email for the original gift card link — it may still be redeemable.</li>
+                        <li>If the link no longer works, contact Sendoso support with your transaction details.</li>
+                        <li>Reach out to your program administrator to request a replacement reward.</li>
+                        <li>Include your name, email, reward amount, and original fulfillment date in any request.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Technician Summary Table */}
         <Card>
