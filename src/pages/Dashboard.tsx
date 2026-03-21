@@ -217,7 +217,7 @@ export default function Dashboard() {
         if (Math.abs(remaining) <= 0.01 && current.length > 1) return current;
         if (idx >= eligible.length || remaining < -0.01) return null;
         // Include
-        const withItem = search(idx + 1, remaining - Number(eligible[idx].upsell_amount), [...current, eligible[idx]]);
+        const withItem = search(idx + 1, remaining - (eligible[idx].expected_reward_amount != null ? Number(eligible[idx].expected_reward_amount) : Number(eligible[idx].upsell_amount)), [...current, eligible[idx]]);
         if (withItem) return withItem;
         // Exclude
         return search(idx + 1, remaining, current);
