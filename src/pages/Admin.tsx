@@ -403,7 +403,9 @@ export default function Admin() {
       const statusIdx = headers.findIndex((h) => h === "status");
       const codeIdx = headers.findIndex((h) => h.includes("gift_card_code") || h.includes("code"));
 
-      console.log("[TeMPO Upload] Column indices:", { idIdx, emailIdx, amountIdx, dateIdx, statusIdx, codeIdx });
+      if (import.meta.env.DEV) {
+        console.log("[TeMPO Upload] Column indices:", { idIdx, emailIdx, amountIdx, dateIdx, statusIdx, codeIdx });
+      }
 
       if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
         setTempoUploadError(`CSV must contain issued_to_email, amount, and issued_at columns. Found headers: ${headers.join(", ")}`);
