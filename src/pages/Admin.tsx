@@ -253,6 +253,27 @@ export default function Admin() {
     }
   };
 
+  const fetchAdjustmentPage = async () => {
+    setAdjustmentLoading(true);
+    try {
+      let query = supabase.from("adjustments").select("*", { count: "exact" });
+      if (adjustmentSearch.trim()) {
+        query = query.ilike("technician_email", `%${adjustmentSearch.trim()}%`);
+      }
+      const { data, count, error } = await query
+        .order("adjustment_date", { ascending: false })
+        .range(adjustmentPage * PAGE_SIZE, (adjustmentPage + 1) * PAGE_SIZE - 1);
+
+      if (error) throw error;
+      setAdjustmentRecords((data || []) as AdjustmentRecord[]);
+      setAdjustmentTotal(count || 0);
+    } catch (error) {
+      console.error("Error fetching adjustment records:", error);
+    } finally {
+      setAdjustmentLoading(false);
+    }
+  };
+
   const fetchUploadHistory = async () => {
     setUploadHistoryLoading(true);
     try {
@@ -296,6 +317,7 @@ export default function Admin() {
     fetchBaseData();
     fetchTempoPage();
     fetchSendosoPage();
+    fetchAdjustmentPage();
     fetchUploadHistory();
   };
 
