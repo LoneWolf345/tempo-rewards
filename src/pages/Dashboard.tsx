@@ -61,6 +61,7 @@ interface RewardRecord {
 interface MatchedRow {
   tempoRecords?: TempoSubmission[];
   rewardRecord?: RewardRecord;
+  rewardRecords?: RewardRecord[];
   isMatched: boolean;
   isGroupMatch?: boolean;
 }
