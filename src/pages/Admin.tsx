@@ -788,6 +788,7 @@ export default function Admin() {
     e.target.value = "";
   };
 
+  const toggleUserActive = async (profile: Profile) => {
     const { error } = await supabase
       .from("profiles")
       .update({ is_active: !profile.is_active })
