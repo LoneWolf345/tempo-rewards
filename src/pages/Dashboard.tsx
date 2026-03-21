@@ -94,10 +94,27 @@ export default function Dashboard() {
   const [sortColumn, setSortColumn] = useState<keyof EmailSummary | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [adjustments, setAdjustments] = useState<AdjustmentRecord[]>([]);
+  const [reactivationInstructions, setReactivationInstructions] = useState<string[]>([]);
 
   useEffect(() => {
     fetchData();
+    fetchReactivationInstructions();
   }, []);
+
+  const fetchReactivationInstructions = async () => {
+    try {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "reactivation_instructions")
+        .single();
+      if (data?.setting_value) {
+        setReactivationInstructions(data.setting_value.split("\n").filter((l: string) => l.trim()));
+      }
+    } catch (e) {
+      console.error("Error fetching reactivation instructions:", e);
+    }
+  };
 
   // Auto-expand the emulated user's row
   useEffect(() => {
