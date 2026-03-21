@@ -266,6 +266,44 @@ export default function Dashboard() {
       }
     }
 
+    // Pass 2c: Many-to-Many group match — group multiple unmatched TeMPO and multiple unmatched rewards where totals balance
+    const unmatchedTempoAfterP2b = sortedTempo.filter(t => !usedTempo.has(t.id) && !groupUsedTempo.has(t.id));
+    const unmatchedRewardsAfterP2b = rewardRecords.filter(r => !usedRewards.has(r.id));
+
+    if (unmatchedTempoAfterP2b.length > 0 && unmatchedRewardsAfterP2b.length > 0) {
+      const m2mUsedTempo = new Set<string>();
+      const m2mUsedRewards = new Set<string>();
+      const sortedUnmatchedTempo = [...unmatchedTempoAfterP2b].sort((a, b) => parseISO(a.submission_date).getTime() - parseISO(b.submission_date).getTime());
+
+      // Greedy accumulation: grow TeMPO group and check for reward subset match at each step
+      for (let i = 0; i < sortedUnmatchedTempo.length; i++) {
+        if (m2mUsedTempo.has(sortedUnmatchedTempo[i].id)) continue;
+        const tempoGroup: typeof sortedUnmatchedTempo = [sortedUnmatchedTempo[i]];
+        let runningTotal = sortedUnmatchedTempo[i].expected_reward_amount != null
+          ? Number(sortedUnmatchedTempo[i].expected_reward_amount)
+          : Number(sortedUnmatchedTempo[i].upsell_amount);
+        const earliestDate = parseISO(sortedUnmatchedTempo[i].submission_date).getTime();
+
+        for (let j = i + 1; j < sortedUnmatchedTempo.length; j++) {
+          if (m2mUsedTempo.has(sortedUnmatchedTempo[j].id)) continue;
+          const nextAmount = sortedUnmatchedTempo[j].expected_reward_amount != null
+            ? Number(sortedUnmatchedTempo[j].expected_reward_amount)
+            : Number(sortedUnmatchedTempo[j].upsell_amount);
+          tempoGroup.push(sortedUnmatchedTempo[j]);
+          runningTotal += nextAmount;
+
+          const availableRewards = unmatchedRewardsAfterP2b.filter(r => !m2mUsedRewards.has(r.id));
+          const rewardSubset = findRewardSubsetSum(availableRewards, runningTotal, earliestDate);
+          if (rewardSubset) {
+            tempoGroup.forEach(t => { m2mUsedTempo.add(t.id); usedTempo.add(t.id); });
+            rewardSubset.forEach(r => { m2mUsedRewards.add(r.id); usedRewards.add(r.id); });
+            rows.push({ tempoRecords: tempoGroup, rewardRecords: rewardSubset, isMatched: true, isGroupMatch: true });
+            break; // Move to next starting TeMPO
+          }
+        }
+      }
+    }
+
 
     // Guard: only reclaim if it produces a net reduction in total unmatched items
     let changed = true;
