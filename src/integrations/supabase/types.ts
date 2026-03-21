@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      adjustments: {
+        Row: {
+          adjustment_date: string
+          adjustment_type: string
+          amount: number
+          description: string | null
+          id: string
+          technician_email: string
+          technician_name: string | null
+          uploaded_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          adjustment_date: string
+          adjustment_type?: string
+          amount: number
+          description?: string | null
+          id?: string
+          technician_email: string
+          technician_name?: string | null
+          uploaded_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          adjustment_date?: string
+          adjustment_type?: string
+          amount?: number
+          description?: string | null
+          id?: string
+          technician_email?: string
+          technician_name?: string | null
+          uploaded_at?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -85,6 +121,7 @@ export type Database = {
       }
       tempo_submissions: {
         Row: {
+          expected_reward_amount: number | null
           gift_card_code: string | null
           id: string
           status: string
@@ -97,6 +134,7 @@ export type Database = {
           upsell_amount: number
         }
         Insert: {
+          expected_reward_amount?: number | null
           gift_card_code?: string | null
           id?: string
           status?: string
@@ -109,6 +147,7 @@ export type Database = {
           upsell_amount: number
         }
         Update: {
+          expected_reward_amount?: number | null
           gift_card_code?: string | null
           id?: string
           status?: string
