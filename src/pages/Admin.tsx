@@ -192,8 +192,45 @@ export default function Admin() {
       fetchSendosoPage();
       fetchAdjustmentPage();
       fetchUploadHistory();
+      fetchSettings();
     }
   }, [isAdmin]);
+
+  const fetchSettings = async () => {
+    setSettingsLoading(true);
+    try {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "reactivation_instructions")
+        .single();
+      if (data) {
+        setReactivationInstructions(data.setting_value);
+        setReactivationInstructionsOriginal(data.setting_value);
+      }
+    } catch (e) {
+      console.error("Error fetching settings:", e);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const saveReactivationInstructions = async () => {
+    setSettingsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("app_settings")
+        .update({ setting_value: reactivationInstructions, updated_at: new Date().toISOString(), updated_by: user?.id })
+        .eq("setting_key", "reactivation_instructions");
+      if (error) throw error;
+      setReactivationInstructionsOriginal(reactivationInstructions);
+      toast.success("Reactivation instructions saved");
+    } catch (e: any) {
+      toast.error("Failed to save: " + e.message);
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (isAdmin) fetchTempoPage();
