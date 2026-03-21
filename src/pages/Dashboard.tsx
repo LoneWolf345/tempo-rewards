@@ -840,14 +840,28 @@ export default function Dashboard() {
                                               {row.isGroupMatch && row.tempoRecords && row.tempoRecords.length > 1 ? (
                                                 <div>
                                                   <span className="text-muted-foreground text-xs">
-                                                    ${Number(row.tempoRecords[0].upsell_amount).toFixed(2)} × {row.tempoRecords.length} ={" "}
+                                                    ${Number(row.tempoRecords[0].expected_reward_amount ?? row.tempoRecords[0].upsell_amount).toFixed(2)} × {row.tempoRecords.length} ={" "}
                                                   </span>
                                                   <span className="font-medium">
-                                                    ${row.tempoRecords.reduce((sum, t) => sum + Number(t.upsell_amount), 0).toFixed(2)}
+                                                    ${row.tempoRecords.reduce((sum, t) => sum + Number(t.expected_reward_amount ?? t.upsell_amount), 0).toFixed(2)}
                                                   </span>
                                                 </div>
                                               ) : (
-                                                <span>${(row.tempoRecords?.[0] ? Number(row.tempoRecords[0].upsell_amount) : allRewards[0]?.amount ?? 0).toFixed(2)}</span>
+                                                (() => {
+                                                  const rec = row.tempoRecords?.[0];
+                                                  const override = rec?.expected_reward_amount;
+                                                  const base = rec ? Number(rec.upsell_amount) : (allRewards[0]?.amount ?? 0);
+                                                  if (override && Number(override) !== base) {
+                                                    return (
+                                                      <span>
+                                                        <span className="text-muted-foreground line-through text-xs">${base.toFixed(2)}</span>
+                                                        {" → "}
+                                                        <span className="font-medium">${Number(override).toFixed(2)}</span>
+                                                      </span>
+                                                    );
+                                                  }
+                                                  return <span>${base.toFixed(2)}</span>;
+                                                })()
                                               )}
                                             </TableCell>
                                             <TableCell>
