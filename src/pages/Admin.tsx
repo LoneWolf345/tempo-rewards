@@ -75,6 +75,7 @@ interface TempoSubmission {
   technician_email: string;
   technician_name: string;
   upsell_amount: number;
+  expected_reward_amount: number | null;
   submission_date: string;
   status: string;
   uploaded_at: string;
