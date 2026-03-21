@@ -877,6 +877,10 @@ export default function Admin() {
               <Gift className="mr-2 h-4 w-4" />
               Sendoso Records ({sendosoTotal})
             </TabsTrigger>
+            <TabsTrigger value="adjustments">
+              <DollarSign className="mr-2 h-4 w-4" />
+              Adjustments ({adjustmentTotal})
+            </TabsTrigger>
             <TabsTrigger value="history">
               <History className="mr-2 h-4 w-4" />
               Upload History
