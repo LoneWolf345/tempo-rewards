@@ -243,7 +243,7 @@ export default function Dashboard() {
     const unmatchedRewardsAfterP2 = rewardRecords.filter(r => !usedRewards.has(r.id));
 
     const findRewardSubsetSum = (items: RewardRecord[], target: number, tempoDate: number): RewardRecord[] | null => {
-      const eligible = items.filter(r => parseISO(r.date).getTime() >= tempoDate);
+      const eligible = items.filter(r => parseISO(r.date).getTime() >= tempoDate).sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
       const search = (idx: number, remaining: number, current: RewardRecord[]): RewardRecord[] | null => {
         if (Math.abs(remaining) <= 0.01 && current.length > 1) return current;
         if (idx >= eligible.length || remaining < -0.01) return null;
