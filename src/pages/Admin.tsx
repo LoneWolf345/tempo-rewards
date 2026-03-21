@@ -795,6 +795,103 @@ export default function Admin() {
     e.target.value = "";
   };
 
+  const saveOverride = async (id: string) => {
+    const val = overrideValue.trim();
+    const numVal = val === "" ? null : parseFloat(val);
+    if (val !== "" && (isNaN(numVal!) || numVal! <= 0)) {
+      toast.error("Enter a valid positive amount or leave blank to clear");
+      return;
+    }
+    const { error } = await supabase
+      .from("tempo_submissions")
+      .update({ expected_reward_amount: numVal })
+      .eq("id", id);
+    if (error) {
+      toast.error("Failed to save override");
+    } else {
+      toast.success(numVal ? `Override set to $${numVal.toFixed(2)}` : "Override cleared");
+      setEditingOverrideId(null);
+      fetchTempoPage();
+    }
+  };
+
+  const handleOverrideCsvUpload = async (file: File) => {
+    if (!file || !user) return;
+    setOverrideUploadError(null);
+    setIsUploading(true);
+    try {
+      const text = await file.text();
+      const lines = text.split("\n").filter((l) => l.trim());
+      const delimiter = lines[0].includes("\t") ? "\t" : ",";
+      const headers = parseCSVLine(lines[0], delimiter).map((h) => h.toLowerCase().trim());
+
+      const emailIdx = headers.findIndex((h) => h.includes("email"));
+      const dateIdx = headers.findIndex((h) => h.includes("date"));
+      const amountIdx = headers.findIndex((h) => h === "amount" || h === "upsell_amount");
+      const overrideIdx = headers.findIndex((h) => h.includes("expected") || h.includes("override"));
+
+      if (overrideIdx === -1) {
+        setOverrideUploadError("CSV must contain an 'expected_reward_amount' column");
+        setIsUploading(false);
+        return;
+      }
+      if (emailIdx === -1 || dateIdx === -1 || amountIdx === -1) {
+        setOverrideUploadError("CSV must contain email, date, and amount columns to identify records");
+        setIsUploading(false);
+        return;
+      }
+
+      let updated = 0;
+      const skipped: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const vals = parseCSVLine(lines[i], delimiter);
+        const email = vals[emailIdx]?.trim();
+        const dateVal = extractDate(vals[dateIdx] || "");
+        const amt = parseFloat(vals[amountIdx]);
+        const overrideAmt = vals[overrideIdx]?.trim() === "" ? null : parseFloat(vals[overrideIdx]);
+
+        if (!email || !isValidDate(dateVal) || isNaN(amt)) {
+          skipped.push(`Row ${i + 1}: invalid data`);
+          continue;
+        }
+        if (overrideAmt !== null && isNaN(overrideAmt)) {
+          skipped.push(`Row ${i + 1}: invalid override amount`);
+          continue;
+        }
+
+        const { error, count } = await supabase
+          .from("tempo_submissions")
+          .update({ expected_reward_amount: overrideAmt })
+          .ilike("technician_email", email)
+          .eq("submission_date", dateVal)
+          .eq("upsell_amount", amt);
+
+        if (error) {
+          skipped.push(`Row ${i + 1}: ${error.message}`);
+        } else if (count === 0) {
+          skipped.push(`Row ${i + 1}: no matching TeMPO record found`);
+        } else {
+          updated += count || 1;
+        }
+      }
+
+      if (skipped.length > 0) {
+        const details = skipped.slice(0, 10).join("\n") + (skipped.length > 10 ? `\n...and ${skipped.length - 10} more` : "");
+        setOverrideUploadError(`Updated ${updated} records, ${skipped.length} rows skipped:\n${details}`);
+      }
+
+      await logUpload({ upload_type: "override", file_name: file.name, total_rows_in_file: lines.length - 1, records_inserted: 0, records_updated: updated, records_skipped: skipped.length });
+      toast.success(`Updated ${updated} override(s)`);
+      fetchTempoPage();
+    } catch (error: any) {
+      const msg = error?.message || "Unknown error";
+      setOverrideUploadError(`Failed: ${msg}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const toggleUserActive = async (profile: Profile) => {
     const { error } = await supabase
       .from("profiles")
