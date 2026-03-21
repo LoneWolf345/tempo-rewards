@@ -91,25 +91,32 @@ export default function Dashboard() {
     }
   }, [isEmulating, emulatedEmail]);
 
-  const fetchAllRows = async <T,>(
+  const fetchAllRows = async <T extends { id: string },>(
     table: "tempo_submissions" | "sendoso_records",
     orderColumn: "submission_date" | "fulfillment_date",
   ): Promise<T[]> => {
     const pageSize = 1000;
     let from = 0;
     const allRows: T[] = [];
+    const seenIds = new Set<string>();
 
     while (true) {
       const { data, error } = await supabase
         .from(table)
         .select("*")
         .order(orderColumn, { ascending: false })
+        .order("id", { ascending: false })
         .range(from, from + pageSize - 1);
 
       if (error) throw error;
       if (!data || data.length === 0) break;
 
-      allRows.push(...(data as T[]));
+      for (const row of data as T[]) {
+        if (seenIds.has(row.id)) continue;
+        seenIds.add(row.id);
+        allRows.push(row);
+      }
+
       if (data.length < pageSize) break;
 
       from += pageSize;
