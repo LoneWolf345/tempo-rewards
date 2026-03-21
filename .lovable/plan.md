@@ -1,28 +1,28 @@
 
 
-## Show Expected Reward Overrides in Dashboard UI
+## Fix: Reverse Group Match Should Prefer Closest-Date Rewards
 
 ### Problem
 
-The `expected_reward_amount` overrides are stored correctly in the database ($75 on douglast's Dec 15-30 TeMPO records), but the dashboard doesn't display them. The Amount column always shows the raw `upsell_amount` ($25), and the summary totals also use `upsell_amount`. The user can't tell which records have been overridden.
+The `findRewardSubsetSum` function (line 245) filters eligible rewards but doesn't sort them by date proximity. It uses depth-first search and grabs the first valid subset — which happens to include Jan 9 rewards instead of the closer Dec 23 ones.
 
-### Changes
+### Fix
 
-**`src/pages/Dashboard.tsx`**:
+**`src/pages/Dashboard.tsx`** — `findRewardSubsetSum` (~line 246):
 
-1. **Amount column display** (~line 850): When `expected_reward_amount` is set, show it with an indicator, e.g. `$25.00 → $75.00` — the original amount in muted text with an arrow to the override amount in bold.
+Sort the `eligible` array by date ascending (closest to the TeMPO/adjustment date first) before running the subset-sum search. Since the recursive search picks the first valid combination it finds depth-first, sorting by date ensures it naturally prefers the earliest (closest) rewards.
 
-2. **Group match amount display** (~lines 841-848): Same treatment for grouped rows — use override amounts when present.
+```
+const eligible = items
+  .filter(r => parseISO(r.date).getTime() >= tempoDate)
+  .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+```
 
-3. **Summary totals** (~line 405): Use `expected_reward_amount ?? upsell_amount` when summing `tempoTotal` so the "Earned Rewards" card reflects the actual expected reward values, not just the base TeMPO amounts.
+This one-line change ensures the Dec 23 raffle adjustment matches against the Dec 23 $50 rewards first, leaving the Jan 9 rewards for other matches.
 
-4. **Pre-Sendoso auto-match amount** (~line 411): Same fix for inline gift card matches — use the override amount for `rewardTotal`.
+### Files
 
-### Visual Result
-
-| Before | After |
-|--------|-------|
-| `$25.00` | `$25.00 → $75.00` |
-
-Records without overrides continue to show just `$25.00` as before.
+| File | Change |
+|------|--------|
+| `src/pages/Dashboard.tsx` | Sort eligible rewards by date ascending in `findRewardSubsetSum` |
 
