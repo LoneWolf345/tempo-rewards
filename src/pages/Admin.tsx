@@ -689,7 +689,105 @@ export default function Admin() {
     e.target.value = "";
   };
 
-  const toggleUserActive = async (profile: Profile) => {
+  const handleAdjustmentUpload = async (file: File) => {
+    if (!file || !user) return;
+    setAdjustmentUploadError(null);
+    setIsUploading(true);
+    try {
+      const text = await file.text();
+      const lines = text.split("\n").filter((line) => line.trim());
+      const firstLine = lines[0];
+      const delimiter = firstLine.includes("\t") ? "\t" : ",";
+      const headers = parseCSVLine(firstLine, delimiter).map((h) => h.toLowerCase().trim());
+
+      const emailIdx = headers.findIndex((h) => h.includes("email"));
+      const nameIdx = headers.findIndex((h) => h.includes("name"));
+      const amountIdx = headers.findIndex((h) => h === "amount" || h.includes("amount"));
+      const dateIdx = headers.findIndex((h) => h.includes("date"));
+      const descIdx = headers.findIndex((h) => h.includes("description") || h.includes("desc"));
+      const typeIdx = headers.findIndex((h) => h.includes("type"));
+
+      if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
+        setAdjustmentUploadError(`CSV must contain technician_email, amount, and date columns. Found: ${headers.join(", ")}`);
+        return;
+      }
+
+      const records: Array<{
+        technician_email: string;
+        technician_name: string | null;
+        adjustment_type: string;
+        amount: number;
+        adjustment_date: string;
+        description: string | null;
+        uploaded_by: string;
+      }> = [];
+      const skippedRows: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i], delimiter);
+        if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
+
+        const dateValue = extractDate(values[dateIdx]);
+        if (!isValidDate(dateValue)) {
+          skippedRows.push(`Row ${i + 1}: invalid date "${values[dateIdx]}"`);
+          continue;
+        }
+
+        const amount = parseFloat(values[amountIdx]);
+        if (isNaN(amount)) {
+          skippedRows.push(`Row ${i + 1}: invalid amount "${values[amountIdx]}"`);
+          continue;
+        }
+
+        records.push({
+          technician_email: values[emailIdx].trim(),
+          technician_name: nameIdx >= 0 ? values[nameIdx]?.trim() || null : null,
+          adjustment_type: typeIdx >= 0 ? values[typeIdx]?.trim() || "raffle" : "raffle",
+          amount,
+          adjustment_date: dateValue,
+          description: descIdx >= 0 ? values[descIdx]?.trim() || null : null,
+          uploaded_by: user.id,
+        });
+      }
+
+      if (records.length === 0) {
+        const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
+        setAdjustmentUploadError(`No valid records found:\n${details}`);
+        await logUpload({ upload_type: "adjustment", file_name: file.name, total_rows_in_file: lines.length - 1, records_inserted: 0, records_updated: 0, records_skipped: skippedRows.length, error_message: "No valid records" });
+        return;
+      }
+
+      const chunkSize = 500;
+      for (let j = 0; j < records.length; j += chunkSize) {
+        const chunk = records.slice(j, j + chunkSize);
+        const { error } = await supabase.from("adjustments").insert(chunk);
+        if (error) throw error;
+      }
+
+      if (skippedRows.length > 0) {
+        const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
+        setAdjustmentUploadError(`Inserted ${records.length} records, but ${skippedRows.length} rows skipped:\n${details}`);
+      }
+
+      await logUpload({ upload_type: "adjustment", file_name: file.name, total_rows_in_file: lines.length - 1, records_inserted: records.length, records_updated: 0, records_skipped: skippedRows.length });
+      toast.success(`Inserted ${records.length} adjustment records`);
+      fetchAllData();
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      const msg = error?.message || "Unknown error";
+      setAdjustmentUploadError(`Failed to upload adjustments: ${msg}`);
+      await logUpload({ upload_type: "adjustment", file_name: file.name, total_rows_in_file: 0, records_inserted: 0, records_updated: 0, records_skipped: 0, error_message: msg });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleAdjustmentFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleAdjustmentUpload(file);
+    e.target.value = "";
+  };
+
     const { error } = await supabase
       .from("profiles")
       .update({ is_active: !profile.is_active })
