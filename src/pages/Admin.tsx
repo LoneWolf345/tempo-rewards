@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye, X, History, Clock, Download, DollarSign, Pencil, Check } from "lucide-react";
+import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye, X, History, Clock, Download, DollarSign, Pencil, Check, Settings, Save } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, parseISO } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
@@ -170,6 +171,12 @@ export default function Admin() {
   const [uploadHistoryLoading, setUploadHistoryLoading] = useState(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
 
+  // Settings state
+  const [reactivationInstructions, setReactivationInstructions] = useState("");
+  const [reactivationInstructionsOriginal, setReactivationInstructionsOriginal] = useState("");
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
   const PAGE_SIZE = 100;
 
   useEffect(() => {
@@ -185,8 +192,45 @@ export default function Admin() {
       fetchSendosoPage();
       fetchAdjustmentPage();
       fetchUploadHistory();
+      fetchSettings();
     }
   }, [isAdmin]);
+
+  const fetchSettings = async () => {
+    setSettingsLoading(true);
+    try {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "reactivation_instructions")
+        .single();
+      if (data) {
+        setReactivationInstructions(data.setting_value);
+        setReactivationInstructionsOriginal(data.setting_value);
+      }
+    } catch (e) {
+      console.error("Error fetching settings:", e);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const saveReactivationInstructions = async () => {
+    setSettingsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("app_settings")
+        .update({ setting_value: reactivationInstructions, updated_at: new Date().toISOString(), updated_by: user?.id })
+        .eq("setting_key", "reactivation_instructions");
+      if (error) throw error;
+      setReactivationInstructionsOriginal(reactivationInstructions);
+      toast.success("Reactivation instructions saved");
+    } catch (e: any) {
+      toast.error("Failed to save: " + e.message);
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (isAdmin) fetchTempoPage();
@@ -990,6 +1034,10 @@ export default function Admin() {
               <History className="mr-2 h-4 w-4" />
               Upload History
             </TabsTrigger>
+            <TabsTrigger value="settings">
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </TabsTrigger>
           </TabsList>
 
           {/* Upload Tab */}
@@ -1677,6 +1725,44 @@ export default function Admin() {
                       ))}
                     </TableBody>
                   </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings">
+            <Card>
+              <CardHeader>
+                <CardTitle>Expired Reward Reactivation Instructions</CardTitle>
+                <CardDescription>
+                  These instructions are shown to technicians when they view expired rewards on their dashboard. Each line becomes a bullet point.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {settingsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading...</p>
+                ) : (
+                  <>
+                    <Textarea
+                      value={reactivationInstructions}
+                      onChange={(e) => setReactivationInstructions(e.target.value)}
+                      rows={6}
+                      placeholder="Enter instructions, one per line..."
+                    />
+                    <div className="flex items-center gap-3">
+                      <Button
+                        onClick={saveReactivationInstructions}
+                        disabled={settingsSaving || reactivationInstructions === reactivationInstructionsOriginal}
+                      >
+                        <Save className="mr-2 h-4 w-4" />
+                        {settingsSaving ? "Saving..." : "Save Instructions"}
+                      </Button>
+                      {reactivationInstructions !== reactivationInstructionsOriginal && (
+                        <span className="text-sm text-muted-foreground">Unsaved changes</span>
+                      )}
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>

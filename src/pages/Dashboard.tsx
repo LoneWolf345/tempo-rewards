@@ -94,10 +94,27 @@ export default function Dashboard() {
   const [sortColumn, setSortColumn] = useState<keyof EmailSummary | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [adjustments, setAdjustments] = useState<AdjustmentRecord[]>([]);
+  const [reactivationInstructions, setReactivationInstructions] = useState<string[]>([]);
 
   useEffect(() => {
     fetchData();
+    fetchReactivationInstructions();
   }, []);
+
+  const fetchReactivationInstructions = async () => {
+    try {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "reactivation_instructions")
+        .single();
+      if (data?.setting_value) {
+        setReactivationInstructions(data.setting_value.split("\n").filter((l: string) => l.trim()));
+      }
+    } catch (e) {
+      console.error("Error fetching reactivation instructions:", e);
+    }
+  };
 
   // Auto-expand the emulated user's row
   useEffect(() => {
@@ -792,20 +809,21 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
-                  <div className="flex items-start gap-2">
-                    <Info className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-semibold">How to Reactivate Expired Rewards</h4>
-                      <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
-                        <li>Check your email for the original gift card link — it may still be redeemable.</li>
-                        <li>If the link no longer works, contact Sendoso support with your transaction details.</li>
-                        <li>Reach out to your program administrator to request a replacement reward.</li>
-                        <li>Include your name, email, reward amount, and original fulfillment date in any request.</li>
-                      </ul>
+                {reactivationInstructions.length > 0 && (
+                  <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
+                    <div className="flex items-start gap-2">
+                      <Info className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold">How to Reactivate Expired Rewards</h4>
+                        <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
+                          {reactivationInstructions.map((line, i) => (
+                            <li key={i}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           );
