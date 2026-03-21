@@ -189,6 +189,10 @@ export default function Admin() {
     if (isAdmin) fetchSendosoPage();
   }, [sendosoPage, sendosoSearch]);
 
+  useEffect(() => {
+    if (isAdmin) fetchAdjustmentPage();
+  }, [adjustmentPage, adjustmentSearch]);
+
   const fetchBaseData = async () => {
     setIsLoading(true);
     try {
