@@ -877,12 +877,19 @@ export default function Dashboard() {
                                             <TableCell>
                                               {row.isGroupMatch && row.tempoRecords && row.tempoRecords.length > 1 ? (
                                                 <div>
-                                                  <span className="text-muted-foreground text-xs">
-                                                    ${Number(row.tempoRecords[0].expected_reward_amount ?? row.tempoRecords[0].upsell_amount).toFixed(2)} × {row.tempoRecords.length} ={" "}
-                                                  </span>
-                                                  <span className="font-medium">
-                                                    ${row.tempoRecords.reduce((sum, t) => sum + Number(t.expected_reward_amount ?? t.upsell_amount), 0).toFixed(2)}
-                                                  </span>
+                                                  {(() => {
+                                                    const amounts = row.tempoRecords.map(t => Number(t.expected_reward_amount ?? t.upsell_amount));
+                                                    const total = amounts.reduce((s, a) => s + a, 0);
+                                                    const allSame = amounts.every(a => a === amounts[0]);
+                                                    return <>
+                                                      <span className="text-muted-foreground text-xs">
+                                                        {allSame
+                                                          ? `$${amounts[0].toFixed(2)} × ${amounts.length} = `
+                                                          : `${amounts.map(a => `$${a.toFixed(2)}`).join(" + ")} = `}
+                                                      </span>
+                                                      <span className="font-medium">${total.toFixed(2)}</span>
+                                                    </>;
+                                                  })()}
                                                 </div>
                                               ) : (
                                                 (() => {
