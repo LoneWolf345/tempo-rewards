@@ -238,7 +238,35 @@ export default function Dashboard() {
       }
     }
 
-    // Pass 3: Reclaim — break 1:1 matches to enable group matches and reduce overall unmatched count
+    // Pass 2b: Reverse group match — find subsets of unmatched rewards that sum to an unmatched TeMPO amount
+    const unmatchedTempoAfterP2 = sortedTempo.filter(t => !usedTempo.has(t.id) && !groupUsedTempo.has(t.id));
+    const unmatchedRewardsAfterP2 = rewardRecords.filter(r => !usedRewards.has(r.id));
+
+    const findRewardSubsetSum = (items: RewardRecord[], target: number, tempoDate: number): RewardRecord[] | null => {
+      const eligible = items.filter(r => parseISO(r.date).getTime() >= tempoDate);
+      const search = (idx: number, remaining: number, current: RewardRecord[]): RewardRecord[] | null => {
+        if (Math.abs(remaining) <= 0.01 && current.length > 1) return current;
+        if (idx >= eligible.length || remaining < -0.01) return null;
+        const withItem = search(idx + 1, remaining - eligible[idx].amount, [...current, eligible[idx]]);
+        if (withItem) return withItem;
+        return search(idx + 1, remaining, current);
+      };
+      return search(0, target, []);
+    };
+
+    const reverseGroupUsedRewards = new Set<string>();
+    for (const t of unmatchedTempoAfterP2) {
+      const targetAmount = t.expected_reward_amount != null ? Number(t.expected_reward_amount) : Number(t.upsell_amount);
+      const availableRewards = unmatchedRewardsAfterP2.filter(r => !reverseGroupUsedRewards.has(r.id));
+      const subset = findRewardSubsetSum(availableRewards, targetAmount, parseISO(t.submission_date).getTime());
+      if (subset) {
+        subset.forEach(r => { reverseGroupUsedRewards.add(r.id); usedRewards.add(r.id); });
+        usedTempo.add(t.id);
+        rows.push({ tempoRecords: [t], rewardRecords: subset, isMatched: true, isGroupMatch: true });
+      }
+    }
+
+
     // Guard: only reclaim if it produces a net reduction in total unmatched items
     let changed = true;
     while (changed) {
