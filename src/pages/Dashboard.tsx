@@ -408,11 +408,11 @@ export default function Dashboard() {
       const code = t.gift_card_code?.trim();
       if (code && !isUUID(code)) {
         entry.rewardCount++;
-        entry.rewardTotal += Number(t.upsell_amount);
+        entry.rewardTotal += Number(t.expected_reward_amount ?? t.upsell_amount);
         entry.rewardRecords.push({
           id: t.id,
           email: key,
-          amount: Number(t.upsell_amount),
+          amount: Number(t.expected_reward_amount ?? t.upsell_amount),
           date: t.submission_date,
           status: t.status,
           source: "TeMPO",
