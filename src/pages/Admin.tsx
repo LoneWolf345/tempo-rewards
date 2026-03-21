@@ -171,6 +171,12 @@ export default function Admin() {
   const [uploadHistoryLoading, setUploadHistoryLoading] = useState(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
 
+  // Settings state
+  const [reactivationInstructions, setReactivationInstructions] = useState("");
+  const [reactivationInstructionsOriginal, setReactivationInstructionsOriginal] = useState("");
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
   const PAGE_SIZE = 100;
 
   useEffect(() => {
