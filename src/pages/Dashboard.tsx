@@ -628,6 +628,14 @@ export default function Dashboard() {
     }, 0);
   }, [sendosoRecords]);
 
+  const latestRewardFulfillmentDate = useMemo(() => {
+    if (sendosoRecords.length === 0) return null;
+    return sendosoRecords.reduce((max, s) => {
+      const d = parseISO(s.fulfillment_date).getTime();
+      return d > max ? d : max;
+    }, 0);
+  }, [sendosoRecords]);
+
   const matchedCount = (isEmulating ? filteredAndSortedSummaries : emailSummaries).filter((s) => s.reconciliationStatus === "matched").length;
 
   const toggleExpand = (email: string) => {
