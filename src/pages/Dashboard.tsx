@@ -408,6 +408,22 @@ export default function Dashboard() {
       });
     }
 
+    // Include adjustments as virtual rewards
+    for (const adj of adjustments) {
+      const key = adj.technician_email.toLowerCase();
+      const entry = getOrCreate(key);
+      entry.rewardCount++;
+      entry.rewardTotal += Number(adj.amount);
+      entry.rewardRecords.push({
+        id: adj.id,
+        email: key,
+        amount: Number(adj.amount),
+        date: adj.adjustment_date,
+        status: adj.adjustment_type,
+        source: "Adjustment",
+      });
+    }
+
     for (const entry of map.values()) {
       entry.tempoRecords.sort((a, b) => parseISO(b.submission_date).getTime() - parseISO(a.submission_date).getTime());
       entry.rewardRecords.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
