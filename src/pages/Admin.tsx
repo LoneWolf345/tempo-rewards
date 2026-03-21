@@ -1220,22 +1220,73 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
-          {/* TeMPO Records Tab */}
           <TabsContent value="tempo">
             <Card>
               <CardHeader>
                 <CardTitle>All TeMPO Submissions</CardTitle>
                 <CardDescription>Complete list of upsell submissions</CardDescription>
-                <div className="relative mt-2 max-w-sm">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by email..."
-                    value={tempoSearchInput}
-                    onChange={(e) => setTempoSearchInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { setTempoSearch(tempoSearchInput); setTempoPage(0); } }}
-                    className="pl-9"
-                  />
+                <div className="flex items-center gap-4 mt-2">
+                  <div className="relative max-w-sm flex-1">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by email..."
+                      value={tempoSearchInput}
+                      onChange={(e) => setTempoSearchInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { setTempoSearch(tempoSearchInput); setTempoPage(0); } }}
+                      className="pl-9"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const csv = "technician_email,date,amount,expected_reward_amount\n";
+                        const blob = new Blob([csv], { type: "text/csv" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "override_template.csv";
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      <Download className="mr-1 h-3 w-3" />
+                      Override Template
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById("override-csv")?.click()}
+                      disabled={isUploading}
+                    >
+                      <Upload className="mr-1 h-3 w-3" />
+                      Bulk Set Overrides
+                    </Button>
+                    <Input
+                      id="override-csv"
+                      type="file"
+                      accept=".csv"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleOverrideCsvUpload(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </div>
                 </div>
+                {overrideUploadError && (
+                  <div className="rounded-md border border-destructive bg-destructive/10 p-3 mt-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <pre className="whitespace-pre-wrap text-sm text-destructive flex-1">{overrideUploadError}</pre>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setOverrideUploadError(null)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 {tempoLoading ? (
@@ -1250,6 +1301,7 @@ export default function Admin() {
                           <TableHead>Email</TableHead>
                           <TableHead>Name</TableHead>
                           <TableHead>Amount</TableHead>
+                          <TableHead>Expected Reward</TableHead>
                           <TableHead>Date</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
@@ -1260,6 +1312,55 @@ export default function Admin() {
                             <TableCell>{submission.technician_email}</TableCell>
                             <TableCell>{submission.technician_name}</TableCell>
                             <TableCell>${Number(submission.upsell_amount).toFixed(2)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                {submission.expected_reward_amount ? (
+                                  <Badge variant="secondary" className="font-mono text-xs">
+                                    → ${Number(submission.expected_reward_amount).toFixed(2)}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                                <Popover
+                                  open={editingOverrideId === submission.id}
+                                  onOpenChange={(open) => {
+                                    if (open) {
+                                      setEditingOverrideId(submission.id);
+                                      setOverrideValue(submission.expected_reward_amount ? String(submission.expected_reward_amount) : "");
+                                    } else {
+                                      setEditingOverrideId(null);
+                                    }
+                                  }}
+                                >
+                                  <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                                      <Pencil className="h-3 w-3" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-56 p-3">
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Expected Reward Amount</Label>
+                                      <div className="flex gap-1">
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          min="0"
+                                          placeholder="e.g. 75"
+                                          value={overrideValue}
+                                          onChange={(e) => setOverrideValue(e.target.value)}
+                                          onKeyDown={(e) => { if (e.key === "Enter") saveOverride(submission.id); }}
+                                          className="h-8 text-sm"
+                                        />
+                                        <Button size="icon" className="h-8 w-8 shrink-0" onClick={() => saveOverride(submission.id)}>
+                                          <Check className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">Leave blank to clear override</p>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                            </TableCell>
                             <TableCell>{format(parseISO(submission.submission_date), "MMM d, yyyy")}</TableCell>
                             <TableCell>
                               <Badge className={getStatusStyles(submission.status)}>{submission.status}</Badge>
