@@ -402,7 +402,7 @@ export default function Dashboard() {
       const key = t.technician_email.toLowerCase();
       const entry = getOrCreate(key);
       entry.tempoCount++;
-      entry.tempoTotal += Number(t.upsell_amount);
+      entry.tempoTotal += Number(t.expected_reward_amount ?? t.upsell_amount);
       entry.tempoRecords.push(t);
 
       const code = t.gift_card_code?.trim();
