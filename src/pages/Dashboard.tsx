@@ -261,7 +261,7 @@ export default function Dashboard() {
           // Find a 1:1 matched row whose TeMPO has the needed amount and valid date
           const donorIdx = rows.findIndex(row =>
             row.isMatched && !row.isGroupMatch && row.tempoRecords?.length === 1 && row.rewardRecord &&
-            Math.abs(Number(row.tempoRecords[0].upsell_amount) - needed) <= 0.01 &&
+            Math.abs((row.tempoRecords[0].expected_reward_amount != null ? Number(row.tempoRecords[0].expected_reward_amount) : Number(row.tempoRecords[0].upsell_amount)) - needed) <= 0.01 &&
             urDate >= parseISO(row.tempoRecords[0].submission_date).getTime()
           );
 
