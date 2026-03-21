@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye, X, History, Clock, Download } from "lucide-react";
+import { ArrowLeft, Upload, Users, FileText, Gift, Shield, Search, ChevronLeft, ChevronRight, Eye, X, History, Clock, Download, DollarSign } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { getStatusStyles } from "@/lib/statusStyles";
 import { useEmulation } from "@/contexts/EmulationContext";
@@ -91,6 +91,18 @@ interface SendosoRecord {
   transaction_id: string | null;
 }
 
+interface AdjustmentRecord {
+  id: string;
+  technician_email: string;
+  technician_name: string | null;
+  adjustment_type: string;
+  amount: number;
+  adjustment_date: string;
+  description: string | null;
+  uploaded_by: string;
+  uploaded_at: string;
+}
+
 interface UploadHistoryRecord {
   id: string;
   uploaded_by: string;
@@ -136,6 +148,16 @@ export default function Admin() {
   const [sendosoSearchInput, setSendosoSearchInput] = useState("");
   const [sendosoLoading, setSendosoLoading] = useState(false);
 
+  // Adjustments state
+  const [adjustmentRecords, setAdjustmentRecords] = useState<AdjustmentRecord[]>([]);
+  const [adjustmentTotal, setAdjustmentTotal] = useState(0);
+  const [adjustmentPage, setAdjustmentPage] = useState(0);
+  const [adjustmentSearch, setAdjustmentSearch] = useState("");
+  const [adjustmentSearchInput, setAdjustmentSearchInput] = useState("");
+  const [adjustmentLoading, setAdjustmentLoading] = useState(false);
+  const [adjustmentUploadError, setAdjustmentUploadError] = useState<string | null>(null);
+  const [adjustmentDragActive, setAdjustmentDragActive] = useState(false);
+
   // Upload history state
   const [uploadHistory, setUploadHistory] = useState<UploadHistoryRecord[]>([]);
   const [uploadHistoryLoading, setUploadHistoryLoading] = useState(false);
@@ -154,6 +176,7 @@ export default function Admin() {
       fetchBaseData();
       fetchTempoPage();
       fetchSendosoPage();
+      fetchAdjustmentPage();
       fetchUploadHistory();
     }
   }, [isAdmin]);
@@ -165,6 +188,10 @@ export default function Admin() {
   useEffect(() => {
     if (isAdmin) fetchSendosoPage();
   }, [sendosoPage, sendosoSearch]);
+
+  useEffect(() => {
+    if (isAdmin) fetchAdjustmentPage();
+  }, [adjustmentPage, adjustmentSearch]);
 
   const fetchBaseData = async () => {
     setIsLoading(true);
@@ -226,6 +253,27 @@ export default function Admin() {
     }
   };
 
+  const fetchAdjustmentPage = async () => {
+    setAdjustmentLoading(true);
+    try {
+      let query = supabase.from("adjustments").select("*", { count: "exact" });
+      if (adjustmentSearch.trim()) {
+        query = query.ilike("technician_email", `%${adjustmentSearch.trim()}%`);
+      }
+      const { data, count, error } = await query
+        .order("adjustment_date", { ascending: false })
+        .range(adjustmentPage * PAGE_SIZE, (adjustmentPage + 1) * PAGE_SIZE - 1);
+
+      if (error) throw error;
+      setAdjustmentRecords((data || []) as AdjustmentRecord[]);
+      setAdjustmentTotal(count || 0);
+    } catch (error) {
+      console.error("Error fetching adjustment records:", error);
+    } finally {
+      setAdjustmentLoading(false);
+    }
+  };
+
   const fetchUploadHistory = async () => {
     setUploadHistoryLoading(true);
     try {
@@ -269,6 +317,7 @@ export default function Admin() {
     fetchBaseData();
     fetchTempoPage();
     fetchSendosoPage();
+    fetchAdjustmentPage();
     fetchUploadHistory();
   };
 
@@ -640,7 +689,105 @@ export default function Admin() {
     e.target.value = "";
   };
 
-  const toggleUserActive = async (profile: Profile) => {
+  const handleAdjustmentUpload = async (file: File) => {
+    if (!file || !user) return;
+    setAdjustmentUploadError(null);
+    setIsUploading(true);
+    try {
+      const text = await file.text();
+      const lines = text.split("\n").filter((line) => line.trim());
+      const firstLine = lines[0];
+      const delimiter = firstLine.includes("\t") ? "\t" : ",";
+      const headers = parseCSVLine(firstLine, delimiter).map((h) => h.toLowerCase().trim());
+
+      const emailIdx = headers.findIndex((h) => h.includes("email"));
+      const nameIdx = headers.findIndex((h) => h.includes("name"));
+      const amountIdx = headers.findIndex((h) => h === "amount" || h.includes("amount"));
+      const dateIdx = headers.findIndex((h) => h.includes("date"));
+      const descIdx = headers.findIndex((h) => h.includes("description") || h.includes("desc"));
+      const typeIdx = headers.findIndex((h) => h.includes("type"));
+
+      if (emailIdx === -1 || amountIdx === -1 || dateIdx === -1) {
+        setAdjustmentUploadError(`CSV must contain technician_email, amount, and date columns. Found: ${headers.join(", ")}`);
+        return;
+      }
+
+      const records: Array<{
+        technician_email: string;
+        technician_name: string | null;
+        adjustment_type: string;
+        amount: number;
+        adjustment_date: string;
+        description: string | null;
+        uploaded_by: string;
+      }> = [];
+      const skippedRows: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i], delimiter);
+        if (values.length < Math.max(emailIdx, amountIdx, dateIdx) + 1) continue;
+
+        const dateValue = extractDate(values[dateIdx]);
+        if (!isValidDate(dateValue)) {
+          skippedRows.push(`Row ${i + 1}: invalid date "${values[dateIdx]}"`);
+          continue;
+        }
+
+        const amount = parseFloat(values[amountIdx]);
+        if (isNaN(amount)) {
+          skippedRows.push(`Row ${i + 1}: invalid amount "${values[amountIdx]}"`);
+          continue;
+        }
+
+        records.push({
+          technician_email: values[emailIdx].trim(),
+          technician_name: nameIdx >= 0 ? values[nameIdx]?.trim() || null : null,
+          adjustment_type: typeIdx >= 0 ? values[typeIdx]?.trim() || "raffle" : "raffle",
+          amount,
+          adjustment_date: dateValue,
+          description: descIdx >= 0 ? values[descIdx]?.trim() || null : null,
+          uploaded_by: user.id,
+        });
+      }
+
+      if (records.length === 0) {
+        const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
+        setAdjustmentUploadError(`No valid records found:\n${details}`);
+        await logUpload({ upload_type: "adjustment", file_name: file.name, total_rows_in_file: lines.length - 1, records_inserted: 0, records_updated: 0, records_skipped: skippedRows.length, error_message: "No valid records" });
+        return;
+      }
+
+      const chunkSize = 500;
+      for (let j = 0; j < records.length; j += chunkSize) {
+        const chunk = records.slice(j, j + chunkSize);
+        const { error } = await supabase.from("adjustments").insert(chunk);
+        if (error) throw error;
+      }
+
+      if (skippedRows.length > 0) {
+        const details = skippedRows.slice(0, 10).join("\n") + (skippedRows.length > 10 ? `\n...and ${skippedRows.length - 10} more` : "");
+        setAdjustmentUploadError(`Inserted ${records.length} records, but ${skippedRows.length} rows skipped:\n${details}`);
+      }
+
+      await logUpload({ upload_type: "adjustment", file_name: file.name, total_rows_in_file: lines.length - 1, records_inserted: records.length, records_updated: 0, records_skipped: skippedRows.length });
+      toast.success(`Inserted ${records.length} adjustment records`);
+      fetchAllData();
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      const msg = error?.message || "Unknown error";
+      setAdjustmentUploadError(`Failed to upload adjustments: ${msg}`);
+      await logUpload({ upload_type: "adjustment", file_name: file.name, total_rows_in_file: 0, records_inserted: 0, records_updated: 0, records_skipped: 0, error_message: msg });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleAdjustmentFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleAdjustmentUpload(file);
+    e.target.value = "";
+  };
+
     const { error } = await supabase
       .from("profiles")
       .update({ is_active: !profile.is_active })
@@ -729,6 +876,10 @@ export default function Admin() {
             <TabsTrigger value="sendoso">
               <Gift className="mr-2 h-4 w-4" />
               Sendoso Records ({sendosoTotal})
+            </TabsTrigger>
+            <TabsTrigger value="adjustments">
+              <DollarSign className="mr-2 h-4 w-4" />
+              Adjustments ({adjustmentTotal})
             </TabsTrigger>
             <TabsTrigger value="history">
               <History className="mr-2 h-4 w-4" />
@@ -1100,6 +1251,150 @@ export default function Admin() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Adjustments Tab */}
+          <TabsContent value="adjustments">
+            <div className="space-y-6">
+              {/* Upload Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Upload Adjustments CSV
+                  </CardTitle>
+                  <CardDescription>
+                    Upload raffle winners, bonuses, or other special adjustments.
+                  </CardDescription>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const csv = "technician_email,technician_name,amount,date,type,description\n";
+                      const blob = new Blob([csv], { type: "text/csv" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "adjustments_template.csv";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    <Download className="mr-1 h-3 w-3" />
+                    Download template
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                      adjustmentDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                    }`}
+                    onDragEnter={(e) => { e.preventDefault(); setAdjustmentDragActive(true); }}
+                    onDragOver={(e) => { e.preventDefault(); setAdjustmentDragActive(true); }}
+                    onDragLeave={(e) => { e.preventDefault(); setAdjustmentDragActive(false); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setAdjustmentDragActive(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) handleAdjustmentUpload(file);
+                    }}
+                    onClick={() => document.getElementById("adjustment-csv")?.click()}
+                  >
+                    <Upload className={`mx-auto h-8 w-8 mb-2 ${adjustmentDragActive ? "text-primary" : "text-muted-foreground"}`} />
+                    <p className="text-sm text-muted-foreground">
+                      {adjustmentDragActive ? "Drop the file here..." : "Drag and drop a CSV file here, or click to select"}
+                    </p>
+                    <Input
+                      id="adjustment-csv"
+                      type="file"
+                      accept=".csv"
+                      className="hidden"
+                      onChange={handleAdjustmentFileSelect}
+                      disabled={isUploading}
+                    />
+                  </div>
+                  {adjustmentUploadError && (
+                    <div className="rounded-md border border-destructive bg-destructive/10 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <pre className="whitespace-pre-wrap text-sm text-destructive flex-1">{adjustmentUploadError}</pre>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setAdjustmentUploadError(null)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Records Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Adjustments</CardTitle>
+                  <CardDescription>Raffle winners, bonuses, and other special adjustments</CardDescription>
+                  <div className="relative mt-2 max-w-sm">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by email..."
+                      value={adjustmentSearchInput}
+                      onChange={(e) => setAdjustmentSearchInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { setAdjustmentSearch(adjustmentSearchInput); setAdjustmentPage(0); } }}
+                      className="pl-9"
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {adjustmentLoading ? (
+                    <p className="text-muted-foreground">Loading...</p>
+                  ) : adjustmentRecords.length === 0 ? (
+                    <p className="text-muted-foreground">No adjustment records found</p>
+                  ) : (
+                    <>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Description</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {adjustmentRecords.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell>{record.technician_email}</TableCell>
+                              <TableCell>{record.technician_name || "—"}</TableCell>
+                              <TableCell>
+                                <Badge variant="secondary">{record.adjustment_type}</Badge>
+                              </TableCell>
+                              <TableCell>${Number(record.amount).toFixed(2)}</TableCell>
+                              <TableCell>{format(parseISO(record.adjustment_date), "MMM d, yyyy")}</TableCell>
+                              <TableCell className="max-w-[200px] truncate">{record.description || "—"}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      <div className="mt-4 flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          Showing {adjustmentPage * PAGE_SIZE + 1}–{Math.min((adjustmentPage + 1) * PAGE_SIZE, adjustmentTotal)} of {adjustmentTotal}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" disabled={adjustmentPage === 0} onClick={() => setAdjustmentPage(adjustmentPage - 1)}>
+                            <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                          </Button>
+                          <Button variant="outline" size="sm" disabled={(adjustmentPage + 1) * PAGE_SIZE >= adjustmentTotal} onClick={() => setAdjustmentPage(adjustmentPage + 1)}>
+                            Next <ChevronRight className="ml-1 h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Upload History Tab */}

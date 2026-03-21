@@ -23,6 +23,18 @@ interface TempoSubmission {
   status: string;
   gift_card_code: string | null;
   uploaded_at: string;
+  expected_reward_amount: number | null;
+}
+
+interface AdjustmentRecord {
+  id: string;
+  technician_email: string;
+  technician_name: string | null;
+  adjustment_type: string;
+  amount: number;
+  adjustment_date: string;
+  description: string | null;
+  uploaded_at: string;
 }
 
 interface SendosoRecord {
@@ -43,7 +55,7 @@ interface RewardRecord {
   amount: number;
   date: string;
   status: string;
-  source: "Sendoso" | "TeMPO";
+  source: "Sendoso" | "TeMPO" | "Adjustment";
 }
 
 interface MatchedRow {
@@ -79,6 +91,7 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState<"all" | "mismatch" | "matched" | "balanced">("all");
   const [sortColumn, setSortColumn] = useState<keyof EmailSummary | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [adjustments, setAdjustments] = useState<AdjustmentRecord[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -129,13 +142,32 @@ export default function Dashboard() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [tempoData, sendosoData] = await Promise.all([
+      const [tempoData, sendosoData, adjustmentData] = await Promise.all([
         fetchAllRows<TempoSubmission>("tempo_submissions", "submission_date"),
         fetchAllRows<SendosoRecord>("sendoso_records", "fulfillment_date"),
+        (async () => {
+          const allAdj: AdjustmentRecord[] = [];
+          let from = 0;
+          const pageSize = 1000;
+          while (true) {
+            const { data, error } = await supabase
+              .from("adjustments")
+              .select("*")
+              .order("adjustment_date", { ascending: false })
+              .range(from, from + pageSize - 1);
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+            allAdj.push(...(data as unknown as AdjustmentRecord[]));
+            if (data.length < pageSize) break;
+            from += pageSize;
+          }
+          return allAdj;
+        })(),
       ]);
 
       setTempoSubmissions(tempoData);
       setSendosoRecords(sendosoData);
+      setAdjustments(adjustmentData);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -156,8 +188,9 @@ export default function Dashboard() {
     const candidates: { tempo: TempoSubmission; reward: RewardRecord; gap: number }[] = [];
     for (const t of sortedTempo) {
       const tDate = parseISO(t.submission_date).getTime();
+      const targetAmount = t.expected_reward_amount != null ? Number(t.expected_reward_amount) : Number(t.upsell_amount);
       for (const r of rewardRecords) {
-        if (Math.abs(Number(t.upsell_amount) - r.amount) > 0.01) continue;
+        if (Math.abs(targetAmount - r.amount) > 0.01) continue;
         const gap = parseISO(r.date).getTime() - tDate;
         if (gap >= 0) candidates.push({ tempo: t, reward: r, gap });
       }
@@ -184,7 +217,7 @@ export default function Dashboard() {
         if (Math.abs(remaining) <= 0.01 && current.length > 1) return current;
         if (idx >= eligible.length || remaining < -0.01) return null;
         // Include
-        const withItem = search(idx + 1, remaining - Number(eligible[idx].upsell_amount), [...current, eligible[idx]]);
+        const withItem = search(idx + 1, remaining - (eligible[idx].expected_reward_amount != null ? Number(eligible[idx].expected_reward_amount) : Number(eligible[idx].upsell_amount)), [...current, eligible[idx]]);
         if (withItem) return withItem;
         // Exclude
         return search(idx + 1, remaining, current);
@@ -221,13 +254,14 @@ export default function Dashboard() {
 
         for (const ut of stillUnmatchedTempo) {
           if (urDate < parseISO(ut.submission_date).getTime()) continue;
-          const needed = ur.amount - Number(ut.upsell_amount);
+          const utAmount = ut.expected_reward_amount != null ? Number(ut.expected_reward_amount) : Number(ut.upsell_amount);
+          const needed = ur.amount - utAmount;
           if (needed <= 0.01) continue;
 
           // Find a 1:1 matched row whose TeMPO has the needed amount and valid date
           const donorIdx = rows.findIndex(row =>
             row.isMatched && !row.isGroupMatch && row.tempoRecords?.length === 1 && row.rewardRecord &&
-            Math.abs(Number(row.tempoRecords[0].upsell_amount) - needed) <= 0.01 &&
+            Math.abs((row.tempoRecords[0].expected_reward_amount != null ? Number(row.tempoRecords[0].expected_reward_amount) : Number(row.tempoRecords[0].upsell_amount)) - needed) <= 0.01 &&
             urDate >= parseISO(row.tempoRecords[0].submission_date).getTime()
           );
 
@@ -241,7 +275,7 @@ export default function Dashboard() {
             const remainingUnmatchedTempo = stillUnmatchedTempo.filter(t => t.id !== ut.id);
             const freedRewardDate = parseISO(freedReward.date).getTime();
             const canRematch = remainingUnmatchedTempo.some(t =>
-              Math.abs(Number(t.upsell_amount) - freedReward.amount) <= 0.01 &&
+              Math.abs((t.expected_reward_amount != null ? Number(t.expected_reward_amount) : Number(t.upsell_amount)) - freedReward.amount) <= 0.01 &&
               freedRewardDate >= parseISO(t.submission_date).getTime()
             );
 
@@ -269,7 +303,7 @@ export default function Dashboard() {
             // If the freed reward can be re-matched, do it now
             if (canRematch) {
               const rematchTempo = remainingUnmatchedTempo.find(t =>
-                Math.abs(Number(t.upsell_amount) - freedReward.amount) <= 0.01 &&
+                Math.abs((t.expected_reward_amount != null ? Number(t.expected_reward_amount) : Number(t.upsell_amount)) - freedReward.amount) <= 0.01 &&
                 freedRewardDate >= parseISO(t.submission_date).getTime()
               )!;
               usedTempo.add(rematchTempo.id);
@@ -374,6 +408,22 @@ export default function Dashboard() {
       });
     }
 
+    // Include adjustments as virtual rewards
+    for (const adj of adjustments) {
+      const key = adj.technician_email.toLowerCase();
+      const entry = getOrCreate(key);
+      entry.rewardCount++;
+      entry.rewardTotal += Number(adj.amount);
+      entry.rewardRecords.push({
+        id: adj.id,
+        email: key,
+        amount: Number(adj.amount),
+        date: adj.adjustment_date,
+        status: adj.adjustment_type,
+        source: "Adjustment",
+      });
+    }
+
     for (const entry of map.values()) {
       entry.tempoRecords.sort((a, b) => parseISO(b.submission_date).getTime() - parseISO(a.submission_date).getTime());
       entry.rewardRecords.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
@@ -396,7 +446,7 @@ export default function Dashboard() {
     }
 
     return Array.from(map.values());
-  }, [tempoSubmissions, sendosoRecords]);
+  }, [tempoSubmissions, sendosoRecords, adjustments]);
 
   const filteredAndSortedSummaries = useMemo(() => {
     let result = emailSummaries;
@@ -764,7 +814,11 @@ export default function Dashboard() {
                                             </TableCell>
                                             <TableCell>
                                               {row.rewardRecord ? (
-                                                <Badge className={row.rewardRecord.source === "TeMPO" ? "bg-purple-600 text-white border-transparent" : "bg-orange-500 text-white border-transparent"}>
+                                                <Badge className={
+                                                  row.rewardRecord.source === "TeMPO" ? "bg-purple-600 text-white border-transparent" :
+                                                  row.rewardRecord.source === "Adjustment" ? "bg-teal-600 text-white border-transparent" :
+                                                  "bg-orange-500 text-white border-transparent"
+                                                }>
                                                   {row.rewardRecord.source}
                                                 </Badge>
                                               ) : <span className="text-muted-foreground">—</span>}
