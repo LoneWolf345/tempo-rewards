@@ -1,50 +1,60 @@
 
 
-## Rewrite Matching to Minimize Date Gaps (Human-Like Matching)
+## Add Adjustments Table for Raffles and Per-Record Overrides
 
-### Problem
+### Summary
 
-The current Pass 1 iterates TeMPO records oldest-first and assigns each to the closest available reward. This per-record greedy approach doesn't optimize globally — an early TeMPO can "steal" a nearby reward, forcing a later TeMPO to match a far-away reward (e.g. Sep 17 → Feb 20), even though swapping assignments would produce tighter pairings overall.
+Create an `adjustments` table to handle two scenarios that don't fit the normal TeMPO → Sendoso matching:
+1. **Raffles/special events**: Admin uploads a list of winners with amounts (e.g., 40 people × varying amounts from a $250 raffle)
+2. **Incentive multipliers**: Admin can set an `expected_reward_amount` override on individual TeMPO records so that a $25 TeMPO correctly matches a $75 Sendoso reward
 
-A human matching by hand would scan all possible pairings and connect the closest dates first, regardless of which TeMPO came first.
+### Database Changes
 
-### Solution: Global Closest-Pair Strategy
+**New table: `adjustments`**
+- `id` (uuid, PK)
+- `technician_email` (text, not null)
+- `technician_name` (text, nullable)
+- `adjustment_type` (text: 'raffle', 'bonus', 'override', etc.)
+- `amount` (numeric, not null)
+- `adjustment_date` (date, not null)
+- `description` (text, nullable — e.g., "Dec 2025 Raffle Winner")
+- `uploaded_by` (uuid, not null)
+- `uploaded_at` (timestamptz, default now())
 
-Replace the per-TeMPO greedy loop in Pass 1 with a global minimum-gap assignment:
+RLS: Admins full access; technicians can view their own (matching existing pattern).
 
-1. Generate all valid candidate pairs: every (TeMPO, reward) where amounts match and reward date ≥ submission date
-2. Sort candidates by date difference ascending (smallest gap first)
-3. Iterate through sorted candidates — if neither the TeMPO nor the reward is already used, match them
+**Alter table: `tempo_submissions`**
+- Add `expected_reward_amount` (numeric, nullable). When set, matching uses this instead of `upsell_amount` for comparison against Sendoso rewards.
 
-This ensures the tightest date pairings are always selected first, exactly like a human would do.
+### Matching Logic Changes
 
-Passes 2 and 3 remain the same (group matching and reclaim).
+**`src/pages/Dashboard.tsx` — `matchRecords`**:
+- In Pass 1 (candidate generation), when comparing amounts: use `expected_reward_amount ?? upsell_amount` instead of just `upsell_amount` for the reward-side comparison.
+- Adjustment records from the `adjustments` table are converted into "virtual rewards" (same `RewardRecord` shape, source = "Adjustment") and fed into the matching pipeline alongside Sendoso rewards. This means raffle payouts will automatically match against Sendoso disbursements.
 
-### File Change
+### Admin Panel Changes
 
-**`src/pages/Dashboard.tsx`** — `matchRecords` function, Pass 1 (lines 155-177):
+**`src/pages/Admin.tsx`**:
+1. Add a new tab "Adjustments" with:
+   - CSV upload for bulk entries (raffle winners). Template: `technician_email, technician_name, amount, date, description`
+   - Downloadable CSV template
+   - Paginated table of existing adjustments
+2. Add an "Expected Reward" column/edit capability to the TeMPO records view — admin can set the override amount per record (inline edit or bulk CSV re-upload with the new column)
 
-Replace the current per-TeMPO loop with:
+### Dashboard Changes
 
-```
-// Pass 1: Exact 1:1 match — global closest-pair assignment
-const candidates: { tempo: TempoSubmission; reward: RewardRecord; gap: number }[] = [];
-for (const t of sortedTempo) {
-  const tDate = parseISO(t.submission_date).getTime();
-  for (const r of rewardRecords) {
-    if (Math.abs(Number(t.upsell_amount) - r.amount) > 0.01) continue;
-    const gap = parseISO(r.date).getTime() - tDate;
-    if (gap >= 0) candidates.push({ tempo: t, reward: r, gap });
-  }
-}
-candidates.sort((a, b) => a.gap - b.gap);
-for (const c of candidates) {
-  if (usedTempo.has(c.tempo.id) || usedRewards.has(c.reward.id)) continue;
-  usedTempo.add(c.tempo.id);
-  usedRewards.add(c.reward.id);
-  rows.push({ tempoRecords: [c.tempo], rewardRecord: c.reward, isMatched: true });
-}
-```
+**`src/pages/Dashboard.tsx`**:
+- Fetch `adjustments` table alongside TeMPO and Sendoso data
+- Include adjustment amounts in the per-technician summary totals (reward side)
+- Display adjustment rows in the detail view with a distinct badge (e.g., "Raffle" or "Adjustment")
+- When `expected_reward_amount` is set on a TeMPO record, show the override amount in the UI alongside the original
 
-No other file changes. No database changes.
+### File Changes
+
+| File | Change |
+|------|--------|
+| DB migration | Create `adjustments` table + add `expected_reward_amount` to `tempo_submissions` |
+| `src/pages/Dashboard.tsx` | Fetch adjustments, integrate into matching, display in UI |
+| `src/pages/Admin.tsx` | New Adjustments tab with CSV upload + per-record override editing |
+| `src/integrations/supabase/types.ts` | Auto-updated after migration |
 
