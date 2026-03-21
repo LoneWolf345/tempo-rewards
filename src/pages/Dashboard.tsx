@@ -378,8 +378,10 @@ export default function Dashboard() {
 
     // Sort: most recent first
     rows.sort((a, b) => {
-      const dateA = a.tempoRecords?.[0] ? parseISO(a.tempoRecords[0].submission_date).getTime() : parseISO(a.rewardRecord!.date).getTime();
-      const dateB = b.tempoRecords?.[0] ? parseISO(b.tempoRecords[0].submission_date).getTime() : parseISO(b.rewardRecord!.date).getTime();
+      const allRewardsA = a.rewardRecords ?? (a.rewardRecord ? [a.rewardRecord] : []);
+      const allRewardsB = b.rewardRecords ?? (b.rewardRecord ? [b.rewardRecord] : []);
+      const dateA = a.tempoRecords?.[0] ? parseISO(a.tempoRecords[0].submission_date).getTime() : parseISO(allRewardsA[0]!.date).getTime();
+      const dateB = b.tempoRecords?.[0] ? parseISO(b.tempoRecords[0].submission_date).getTime() : parseISO(allRewardsB[0]!.date).getTime();
       return dateB - dateA;
     });
 
