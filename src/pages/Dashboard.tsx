@@ -814,7 +814,11 @@ export default function Dashboard() {
                                             </TableCell>
                                             <TableCell>
                                               {row.rewardRecord ? (
-                                                <Badge className={row.rewardRecord.source === "TeMPO" ? "bg-purple-600 text-white border-transparent" : "bg-orange-500 text-white border-transparent"}>
+                                                <Badge className={
+                                                  row.rewardRecord.source === "TeMPO" ? "bg-purple-600 text-white border-transparent" :
+                                                  row.rewardRecord.source === "Adjustment" ? "bg-teal-600 text-white border-transparent" :
+                                                  "bg-orange-500 text-white border-transparent"
+                                                }>
                                                   {row.rewardRecord.source}
                                                 </Badge>
                                               ) : <span className="text-muted-foreground">—</span>}
