@@ -1,60 +1,26 @@
 
 
-## Add Adjustments Table for Raffles and Per-Record Overrides
+## Add Expected Reward Override UI to Admin Panel
 
-### Summary
+### What This Solves
 
-Create an `adjustments` table to handle two scenarios that don't fit the normal TeMPO → Sendoso matching:
-1. **Raffles/special events**: Admin uploads a list of winners with amounts (e.g., 40 people × varying amounts from a $250 raffle)
-2. **Incentive multipliers**: Admin can set an `expected_reward_amount` override on individual TeMPO records so that a $25 TeMPO correctly matches a $75 Sendoso reward
+For triple incentive periods, a TeMPO record shows $25 earned but Sendoso sent $75. The `expected_reward_amount` column already exists in the database — we just need a way to set it.
 
-### Database Changes
+### Changes
 
-**New table: `adjustments`**
-- `id` (uuid, PK)
-- `technician_email` (text, not null)
-- `technician_name` (text, nullable)
-- `adjustment_type` (text: 'raffle', 'bonus', 'override', etc.)
-- `amount` (numeric, not null)
-- `adjustment_date` (date, not null)
-- `description` (text, nullable — e.g., "Dec 2025 Raffle Winner")
-- `uploaded_by` (uuid, not null)
-- `uploaded_at` (timestamptz, default now())
+**`src/pages/Admin.tsx`** — TeMPO Records tab:
 
-RLS: Admins full access; technicians can view their own (matching existing pattern).
+1. **Inline edit button** on each TeMPO row: clicking opens a small popover/dialog where the admin types the expected reward amount (e.g. 75). Saving calls `supabase.from('tempo_submissions').update({ expected_reward_amount }).eq('id', row.id)`.
 
-**Alter table: `tempo_submissions`**
-- Add `expected_reward_amount` (numeric, nullable). When set, matching uses this instead of `upsell_amount` for comparison against Sendoso rewards.
+2. **Bulk override via CSV**: Add a "Set Overrides" button that accepts a CSV with columns `submission_id, expected_reward_amount` (or `technician_email, submission_date, upsell_amount, expected_reward_amount` for matching). This updates existing TeMPO records in bulk.
 
-### Matching Logic Changes
+3. **Visual indicator**: Show the override amount in the TeMPO table with a small badge (e.g. "→ $75") next to the original $25 amount, so admins can see which records have overrides at a glance.
 
-**`src/pages/Dashboard.tsx` — `matchRecords`**:
-- In Pass 1 (candidate generation), when comparing amounts: use `expected_reward_amount ?? upsell_amount` instead of just `upsell_amount` for the reward-side comparison.
-- Adjustment records from the `adjustments` table are converted into "virtual rewards" (same `RewardRecord` shape, source = "Adjustment") and fed into the matching pipeline alongside Sendoso rewards. This means raffle payouts will automatically match against Sendoso disbursements.
-
-### Admin Panel Changes
-
-**`src/pages/Admin.tsx`**:
-1. Add a new tab "Adjustments" with:
-   - CSV upload for bulk entries (raffle winners). Template: `technician_email, technician_name, amount, date, description`
-   - Downloadable CSV template
-   - Paginated table of existing adjustments
-2. Add an "Expected Reward" column/edit capability to the TeMPO records view — admin can set the override amount per record (inline edit or bulk CSV re-upload with the new column)
-
-### Dashboard Changes
-
-**`src/pages/Dashboard.tsx`**:
-- Fetch `adjustments` table alongside TeMPO and Sendoso data
-- Include adjustment amounts in the per-technician summary totals (reward side)
-- Display adjustment rows in the detail view with a distinct badge (e.g., "Raffle" or "Adjustment")
-- When `expected_reward_amount` is set on a TeMPO record, show the override amount in the UI alongside the original
-
-### File Changes
+### Files
 
 | File | Change |
 |------|--------|
-| DB migration | Create `adjustments` table + add `expected_reward_amount` to `tempo_submissions` |
-| `src/pages/Dashboard.tsx` | Fetch adjustments, integrate into matching, display in UI |
-| `src/pages/Admin.tsx` | New Adjustments tab with CSV upload + per-record override editing |
-| `src/integrations/supabase/types.ts` | Auto-updated after migration |
+| `src/pages/Admin.tsx` | Add inline edit + bulk CSV override for `expected_reward_amount` on TeMPO records |
+
+No database changes needed — column already exists.
 
