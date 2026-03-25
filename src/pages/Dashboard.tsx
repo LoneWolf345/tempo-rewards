@@ -870,15 +870,6 @@ export default function Dashboard() {
               Per-email comparison of TeMPO submissions vs Sendoso rewards. Click a row to see details.
             </CardDescription>
             <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by email..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
               <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "mismatch" | "matched" | "balanced")}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter status" />
