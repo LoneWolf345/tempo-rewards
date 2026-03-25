@@ -770,9 +770,16 @@ export default function Dashboard() {
 
         {/* Expired Rewards Panel */}
         {showExpiredPanel && (() => {
-          const expiredRecords = sendosoRecords.filter(s => {
+           const expiredRecords = sendosoRecords.filter(s => {
             const st = s.status.toLowerCase();
-            return st === "expired" || st === "credited" || st === "expired and credited";
+            const isExpired = st === "expired" || st === "credited" || st === "expired and credited";
+            if (!isExpired) return false;
+            if (searchQuery.trim()) {
+              const q = searchQuery.toLowerCase();
+              return s.technician_email.toLowerCase().includes(q) || 
+                     (s.technician_name || "").toLowerCase().includes(q);
+            }
+            return true;
           });
           return (
             <Card className="border-amber-500/30">
