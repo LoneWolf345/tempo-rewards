@@ -587,7 +587,7 @@ export default function Dashboard() {
   }, [emailSummaries, searchQuery, statusFilter, sortColumn, sortDirection, isEmulating, emulatedEmail]);
 
   const displaySummaries = isEmulating ? filteredAndSortedSummaries : filteredAndSortedSummaries;
-  const activeSummaries = isEmulating ? filteredAndSortedSummaries : emailSummaries;
+  const activeSummaries = isEmulating ? filteredAndSortedSummaries : (searchQuery.trim() ? filteredAndSortedSummaries : emailSummaries);
   const totalTempoValue = activeSummaries.reduce((sum, s) => sum + s.tempoTotal, 0);
   const totalSendosoValue = activeSummaries.reduce((sum, s) => sum + s.rewardTotal, 0);
   const pendingValue = totalTempoValue - totalSendosoValue;
@@ -601,15 +601,17 @@ export default function Dashboard() {
       sent: { count: 0, amount: 0 }, clicked: { count: 0, amount: 0 }, opened: { count: 0, amount: 0 },
       used: { count: 0, amount: 0 }, "expired/credited": { count: 0, amount: 0 },
     };
+    const q = searchQuery.trim().toLowerCase();
     for (const s of sendosoRecords) {
       if (!tempoEmailSet.has(s.technician_email.toLowerCase())) continue;
+      if (q && !s.technician_email.toLowerCase().includes(q) && !(s.technician_name || "").toLowerCase().includes(q)) continue;
       const st = s.status.toLowerCase();
       const amt = Number(s.reward_amount);
       if (st === "expired" || st === "credited" || st === "expired and credited") { counts["expired/credited"].count++; counts["expired/credited"].amount += amt; }
       else if (st in counts) { counts[st].count++; counts[st].amount += amt; }
     }
     return counts;
-  }, [sendosoRecords, tempoEmailSet]);
+  }, [sendosoRecords, tempoEmailSet, searchQuery]);
   const tempoLastUpdated = useMemo(() => {
     if (tempoSubmissions.length === 0) return null;
     return tempoSubmissions.reduce((max, t) => {
@@ -707,6 +709,24 @@ export default function Dashboard() {
       </div>
 
       <main className="container mx-auto px-4 py-8">
+        {/* Global Search */}
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by email or name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <span className="text-sm text-muted-foreground">
+            {searchQuery.trim()
+              ? `Showing: ${activeSummaries.length} associate${activeSummaries.length !== 1 ? "s" : ""} matching '${searchQuery.trim()}'`
+              : `Showing: All Associates (${activeSummaries.length})`}
+          </span>
+        </div>
+
         {/* Summary Cards */}
         <div className="mb-4 grid gap-4 md:grid-cols-3">
           <Card>
@@ -850,15 +870,6 @@ export default function Dashboard() {
               Per-email comparison of TeMPO submissions vs Sendoso rewards. Click a row to see details.
             </CardDescription>
             <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by email..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
               <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "mismatch" | "matched" | "balanced")}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter status" />
