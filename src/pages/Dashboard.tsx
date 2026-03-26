@@ -587,6 +587,13 @@ export default function Dashboard() {
     return result;
   }, [emailSummaries, searchQuery, statusFilter, sortColumn, sortDirection, isEmulating, emulatedEmail]);
 
+  // Auto-expand for non-admin associates
+  useEffect(() => {
+    if (!isAdmin && !isEmulating && filteredAndSortedSummaries.length > 0) {
+      setExpandedEmails(new Set(filteredAndSortedSummaries.map(s => s.email)));
+    }
+  }, [isAdmin, isEmulating, filteredAndSortedSummaries]);
+
   const displaySummaries = isEmulating ? filteredAndSortedSummaries : filteredAndSortedSummaries;
   const activeSummaries = isEmulating ? filteredAndSortedSummaries : (searchQuery.trim() ? filteredAndSortedSummaries : emailSummaries);
   const totalTempoValue = activeSummaries.reduce((sum, s) => sum + s.tempoTotal, 0);
