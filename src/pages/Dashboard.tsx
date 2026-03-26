@@ -123,6 +123,7 @@ export default function Dashboard() {
     }
   }, [isEmulating, emulatedEmail]);
 
+
   const fetchAllRows = async <T extends { id: string },>(
     table: "tempo_submissions" | "sendoso_records",
     orderColumn: "submission_date" | "fulfillment_date",
@@ -586,6 +587,13 @@ export default function Dashboard() {
     return result;
   }, [emailSummaries, searchQuery, statusFilter, sortColumn, sortDirection, isEmulating, emulatedEmail]);
 
+  // Auto-expand for non-admin associates
+  useEffect(() => {
+    if (!isAdmin && !isEmulating && filteredAndSortedSummaries.length > 0) {
+      setExpandedEmails(new Set(filteredAndSortedSummaries.map(s => s.email)));
+    }
+  }, [isAdmin, isEmulating, filteredAndSortedSummaries]);
+
   const displaySummaries = isEmulating ? filteredAndSortedSummaries : filteredAndSortedSummaries;
   const activeSummaries = isEmulating ? filteredAndSortedSummaries : (searchQuery.trim() ? filteredAndSortedSummaries : emailSummaries);
   const totalTempoValue = activeSummaries.reduce((sum, s) => sum + s.tempoTotal, 0);
@@ -709,23 +717,25 @@ export default function Dashboard() {
       </div>
 
       <main className="container mx-auto px-4 py-8">
-        {/* Global Search */}
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by email or name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
+        {/* Global Search - admin only */}
+        {isAdmin && (
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by email or name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <span className="text-sm text-muted-foreground">
+              {searchQuery.trim()
+                ? `Showing: ${activeSummaries.length} associate${activeSummaries.length !== 1 ? "s" : ""} matching '${searchQuery.trim()}'`
+                : `Showing: All Associates (${activeSummaries.length})`}
+            </span>
           </div>
-          <span className="text-sm text-muted-foreground">
-            {searchQuery.trim()
-              ? `Showing: ${activeSummaries.length} associate${activeSummaries.length !== 1 ? "s" : ""} matching '${searchQuery.trim()}'`
-              : `Showing: All Associates (${activeSummaries.length})`}
-          </span>
-        </div>
+        )}
 
         {/* Summary Cards */}
         <div className="mb-4 grid gap-4 md:grid-cols-3">
