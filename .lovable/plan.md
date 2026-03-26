@@ -1,22 +1,15 @@
 
 
-## Move Search Bar Above KPIs & Make KPIs Search-Aware
+## Hide Search & Auto-Expand for Non-Admin Associates
 
 ### What It Does
-
-The search bar moves from inside the Technician Summary card to above the KPI cards. When empty, it shows "All Associates" and KPIs aggregate everyone. When a search term is entered, all KPIs (Earned, Sent, Pending) and the Status Pipeline counts update to reflect only matching associates.
+Non-admin (associate) users only see their own data, so the search bar is unnecessary. We hide it and automatically expand their single summary row so they see their detail timeline immediately on load.
 
 ### Changes — `src/pages/Dashboard.tsx`
 
-1. **Move search bar** (~line 852-861) from inside the Technician Summary `CardHeader` to a new section between the Data Freshness Banner and the KPI cards (~line 709). Add a label like "Showing: All Associates" or "Showing: X associates matching '{query}'".
+1. **Hide search bar for non-admins** (~line 712-728): Wrap the "Global Search" `div` in `{isAdmin && (...)}` so it only renders for admins.
 
-2. **Make `activeSummaries` search-aware** (~line 590): Change it from `emailSummaries` to `filteredAndSortedSummaries` always (which already applies `searchQuery`). This makes `totalTempoValue`, `totalSendosoValue`, and `pendingValue` react to search.
+2. **Auto-expand for non-admins** (~line 120-124): Add logic so that when `!isAdmin` and `filteredAndSortedSummaries` has loaded (length > 0), auto-set `expandedEmails` to include all summary emails (typically just one for a regular associate). Similar to the existing emulation auto-expand pattern.
 
-3. **Make `statusCounts` search-aware** (~line 599-612): Add `searchQuery` to the dependency array and filter `sendosoRecords` by the search query (matching `technician_email` or `technician_name`) in addition to the existing `tempoEmailSet` check.
-
-4. **Keep status filter dropdown** inside the Technician Summary card header (it's table-specific filtering, not global).
-
-### Summary of scope
-
-Single file change: `src/pages/Dashboard.tsx`. No database or backend changes needed.
+Single file change, no backend changes.
 
