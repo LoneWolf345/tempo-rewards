@@ -323,13 +323,6 @@ export default function Dashboard() {
       }
     }
 
-  // Auto-expand for non-admin associates
-  useEffect(() => {
-    if (!isAdmin && !isEmulating && filteredAndSortedSummaries.length > 0) {
-      setExpandedEmails(new Set(filteredAndSortedSummaries.map(s => s.email)));
-    }
-  }, [isAdmin, isEmulating, filteredAndSortedSummaries]);
-
 
     // Guard: only reclaim if it produces a net reduction in total unmatched items
     let changed = true;
