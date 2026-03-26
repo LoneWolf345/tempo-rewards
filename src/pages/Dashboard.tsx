@@ -123,12 +123,6 @@ export default function Dashboard() {
     }
   }, [isEmulating, emulatedEmail]);
 
-  // Auto-expand for non-admin associates
-  useEffect(() => {
-    if (!isAdmin && !isEmulating && filteredAndSortedSummaries.length > 0) {
-      setExpandedEmails(new Set(filteredAndSortedSummaries.map(s => s.email)));
-    }
-  }, [isAdmin, isEmulating, filteredAndSortedSummaries]);
 
   const fetchAllRows = async <T extends { id: string },>(
     table: "tempo_submissions" | "sendoso_records",
